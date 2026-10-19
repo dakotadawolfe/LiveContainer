@@ -166,6 +166,7 @@ final class ContainerInstaller: ObservableObject {
         try ContainerBundleCommit.install(prepared: appFolderPath, destination: outputFolder)
         guard let installedInfo = LCAppInfo(bundlePath: outputFolder.path) else { throw "Installed bundle could not be read." }
         installedInfo.relativeBundlePath = appRelativePath
+        installedInfo.isShared = finalNewApp.isShared
         
         do {
             if let appToReplace {

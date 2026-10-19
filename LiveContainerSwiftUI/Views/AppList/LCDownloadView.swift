@@ -51,7 +51,7 @@ struct TransferQueueView: View {
                         } else if item.state.isActive && item.state != .installing {
                             Button("Cancel", role: .destructive) { queue.cancel(item.id) }
                         }
-                    }.padding(.vertical, 4)
+                    }.padding(.vertical, 4).buttonStyle(.borderless)
                 }
                 Button("Clear finished downloads") { queue.clearFinished() }
             }
