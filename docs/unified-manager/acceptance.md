@@ -1,6 +1,14 @@
 # Physical-device acceptance record
 
-Status: **not executed**. No item below is passed by CI. Record artifact SHA-256, commit, device model, exact iOS build, signing team (keep identifiers private), test time, observations, and failure evidence. Never put credentials, private keys, anisette payloads, UDIDs or pairing contents in public logs.
+Status: **bootstrap attempted; failed after Zeus removed extensions and the shared App Group was inaccessible**. The user deleted that installation. See results.md for the reported evidence. No complete acceptance item below is passed by CI. Record artifact SHA-256, commit, device model, exact iOS build, signing team (keep identifiers private), test time, observations, and failure evidence. Never put credentials, private keys, anisette payloads, UDIDs or pairing contents in public logs.
+
+## Bootstrap regression checks
+
+- [ ] With an incomplete test installation, Apple ID / Signing reports missing components or inaccessible App Group before opening authentication.
+- [ ] Refresh/Shortcuts on that installation fail with actionable prerequisites, without claiming success or creating a private fallback database.
+- [ ] If embedded SideStore itself encounters database startup failure, sign-in never reaches account saving and backgrounding the error screen causes no Core Data save exception.
+- [ ] An installation retaining all four extensions and usable App Group access reaches the existing SideStore sign-in flow.
+- [ ] Preserve existing guest data and credentials when the prerequisites check fails; no automatic reset runs.
 
 ## Bootstrap and signing
 
