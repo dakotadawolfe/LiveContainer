@@ -10,13 +10,15 @@ Zeus separately offered to remove extensions because four new App IDs were reque
 
 The bootstrap correction adds host checks for all four extensions and the shared group, waits for database startup before sign-in, and suppresses persistent error logging/purging until startup succeeds. These checks do not reset or delete account or guest data. On-device validation of these corrections remains required.
 
+A subsequent user screenshot of build 1476cd5 on iOS 27.0.1 reaches the SideStore Apple ID form and reports "This action cannot be completed at this time. (-80045)". The earlier database error is not shown in this attempt; this is not a successful login or a full database regression test. The pinned integration branch is still upstream's latest LiveContainerSupport commit, and its SideSign dependency already includes merged 2FA fix PR 5. Other upstream users report the same authentication error. A reversible client-header configuration test is documented in setup.md; its outcome on this phone is pending. No account identifier or screenshot containing it is published here.
+
 ## Delivered build
 
 - Artifact: `LiveContainer+SideStore.ipa`
 - Source commit: `1476cd539ddadf7011024063f1562f305ff45111`
 - SHA-256: `77302a1deb593eb6769758e681112368feb1ca472028cf31510b727fcc883e5b`
 - [Successful macOS build and logs](https://github.com/dakotadawolfe/LiveContainer/actions/runs/39197571815)
-- Toolchain: Xcode 26.6, build 17F113, iPhoneOS 26.5 SDK. The user's iOS 27.0.1 screenshots concern the earlier c6e5cfa build. The corrected build has not yet been tested on the phone.
+- Toolchain: Xcode 26.6, build 17F113, iPhoneOS 26.5 SDK. User screenshots cover both the earlier c6e5cfa database failure and the corrected 1476cd5 build's subsequent authentication error. Neither attempt establishes successful signing or refresh.
 - Signing state: ad-hoc entitlement requests for a bootstrap installer to replace with valid device provisioning. No personal Apple ID, developer certificate, pairing record, or private key was used by CI.
 
 Later documentation commits do not change this binary. Its embedded `LCUnifiedBuildCommit` matches the source commit above. `main` contains the implementation and these delivery documents; temporary implementation branches have been merged and removed.

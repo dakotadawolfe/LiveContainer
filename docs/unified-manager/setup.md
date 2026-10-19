@@ -31,6 +31,24 @@ After reinstalling, embedded SideStore must open its shared database before Appl
 
 The reported LocalDevVPN endpoint success establishes TCP connectivity only. It does not validate App Groups, pairing, extension retention, Apple authentication, or JIT execution.
 
+### Sign-in error -80045
+
+Build 1476cd5 has reached the login form but returned this error on the target phone. It is also reported in [SideStore issue 1665](https://github.com/SideStore/SideStore/issues/1665). The pinned integration already includes SideSign's merged 2FA fix; another identical rebuild is not an authentication fix.
+
+For a controlled, reversible test, close the login sheet and open embedded SideStore's Settings → User Customizations → Anisette Client Configuration → Interactive. Record the existing Client Info and User Agent values locally, then use:
+
+Client Info:
+```
+<PC> <Windows;6.2(0,0);9200> <com.apple.AuthKit/1 (com.apple.iTunes/12.12.4.1)>
+```
+
+User Agent:
+```
+akd/1.0 CFNetwork/808.1.4
+```
+
+Tap Save Overrides, fully quit and reopen the combined manager, then try sign-in once. Leave other identity fields and server selection unchanged for this test. This is a [community-reported workaround](https://github.com/SideStore/SideStore/pull/1660), not a verified fix for this phone. PR 1660 remains unmerged; its broader changes have not been adopted here. If the error persists or changes, record only the error code and current Anisette mode before choosing the next step. Do not delete the app, wipe the database, send credentials to support, or silently switch to an arbitrary server. Restore the recorded fields if abandoning the test.
+
 ## Sources, installation, and updates
 
 In Discover, add an HTTPS source. Tap an app for details. Install offers **Device** or **LiveContainer** unless a default was explicitly selected in Settings. Device installs consume free-account slots and registered App IDs; use LiveContainer for a compatible app if no slot is available. A failed device attempt does not automatically install a guest.
