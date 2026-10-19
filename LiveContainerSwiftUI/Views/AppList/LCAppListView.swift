@@ -141,6 +141,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                     if UserDefaults.sideStoreExist() { ManagedDeviceAppsView() }
                     ForEach(filteredApps, id: \.self) { app in
                         LCAppBanner(appModel: app, delegate: self)
+                        UnifiedUpdateButton(bundleID: app.appInfo.bundleIdentifier() ?? "", version: app.version, destination: .liveContainer)
                     }
                     .transition(.scale)
                 }

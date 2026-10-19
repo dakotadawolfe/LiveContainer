@@ -75,6 +75,7 @@ struct ManagedDeviceAppsView: View {
                         Text(app.name).bold()
                         Text("Device · \(app.version)").font(.caption)
                         if app.expires.timeIntervalSinceNow < 48 * 3600 { Text("Refresh needed").foregroundStyle(.orange) }
+                        UnifiedUpdateButton(bundleID: app.bundleID, version: app.version, destination: .device)
                     }
                     Spacer()
                     Button("Manage") { LCUtils.openSideStore() }
@@ -82,5 +83,31 @@ struct ManagedDeviceAppsView: View {
             }
             Text("LiveContainer guests").font(.title2.bold())
         }.padding()
+    }
+}
+
+struct UnifiedUpdateButton: View {
+    let bundleID: String
+    let version: String
+    let destination: InstallDestination
+    @ObservedObject private var records = UnifiedInstallRecords.shared
+    @ObservedObject private var sources = AltStoreSourcesViewModel.shared
+
+    private var update: (URL, AltStoreSourceAppVersion)? {
+        guard let record = records.records[destination.rawValue + ":" + bundleID], let sourceURL = record.source,
+              let source = sources.sources.first(where: { $0.url == sourceURL })?.source,
+              let app = source.apps.first(where: { $0.bundleIdentifier == bundleID }), let latest = app.latestVersion,
+              latest.downloadURL.scheme == "https", version.compare(latest.version, options: .numeric) == .orderedAscending else { return nil }
+        return (sourceURL, latest)
+    }
+
+    var body: some View {
+        if let (source, latest) = update {
+            Button("Update to \(latest.version)") {
+                NotificationCenter.default.post(name: NSNotification.InstallAppNotification, object: [
+                    "url": latest.downloadURL, "destination": destination.rawValue, "bundleID": bundleID, "source": source
+                ])
+            }.font(.caption)
+        }
     }
 }

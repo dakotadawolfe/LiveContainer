@@ -68,7 +68,16 @@ extern BOOL checkJITEnabled(void);
     ext.requestInterruptionBlock = ^(NSUUID *uuid) {
         error = [NSError errorWithDomain:@"StikJIT" code:1 userInfo:@{NSLocalizedDescriptionKey: @"LiveProcess hosting StikJIT has crashed"}];
     };
+    __block BOOL requestStarted = NO;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 120 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+        if (!requestStarted) {
+            error = [NSError errorWithDomain:@"StikJIT" code:1 userInfo:@{NSLocalizedDescriptionKey: @"StikJIT helper did not start within two minutes."}];
+            [ext _kill:9];
+            CFRunLoopStop(CFRunLoopGetMain());
+        }
+    });
     [ext beginExtensionRequestWithInputItems:@[item] completion:^(NSUUID *uuid) {
+        requestStarted = YES;
         CFRunLoopStop(CFRunLoopGetMain());
     }];
     CFRunLoopRun();

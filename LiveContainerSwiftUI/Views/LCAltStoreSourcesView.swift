@@ -115,6 +115,7 @@ private struct AltStoreSourceAppVersionResponse: Decodable {
 
 @MainActor
 final class AltStoreSourcesViewModel: ObservableObject {
+    static let shared = AltStoreSourcesViewModel()
     struct SourceItem: Identifiable, Hashable {
         let id: URL
         let url: URL
@@ -479,7 +480,7 @@ private extension Color {
 }
 
 struct LCSourcesView: View {
-    @StateObject private var viewModel = AltStoreSourcesViewModel()
+    @StateObject private var viewModel = AltStoreSourcesViewModel.shared
     @State private var errorMessage: String?
     @State private var sourcePendingRemoval: AltStoreSourcesViewModel.SourceItem?
     @State private var pendingInstall: AltStoreSourceApp?
