@@ -32,6 +32,7 @@ __attribute__((swift_attr("@Sendable")))
 
 NSXPCListener* startAnonymousListener(NSObject<RefreshServer>* reporter);
 NSData* bookmarkForURL(NSURL* url);
+BOOL LCUnifiedSharedGroupAccessible(void);
 
 void installSideStoreHooks(void);
 void installSideStoreNotificationHooks(void);

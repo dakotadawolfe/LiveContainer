@@ -6,11 +6,7 @@ public enum UnifiedSideStoreService {
     private static var active = false
     public static func validateInstallation() throws {
         let bundle = UserDefaults.lcMainBundle() ?? Bundle.main
-        let group: String? = LCSharedUtils.appGroupID()
-        let accessible = group.flatMap {
-            FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: $0)
-        } != nil
-        if let problem = BootstrapRequirements.problem(bundleURL: bundle.bundleURL, sharedGroupAccessible: accessible) {
+        if let problem = BootstrapRequirements.problem(bundleURL: bundle.bundleURL, sharedGroupAccessible: LCUnifiedSharedGroupAccessible()) {
             throw serviceError(problem)
         }
     }

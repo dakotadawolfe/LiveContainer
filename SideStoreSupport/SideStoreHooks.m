@@ -11,6 +11,12 @@
 @import UserNotifications;
 @import UIKit;
 
+BOOL LCUnifiedSharedGroupAccessible(void) {
+    NSString *group = LCSharedUtils.appGroupID;
+    return group.length > 0 &&
+        [NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:group] != nil;
+}
+
 @interface LCAuthorizedNotificationSettings : UNNotificationSettings
 @end
 
