@@ -109,6 +109,7 @@ struct LCTabView: View {
         }
         .onChange(of: scenePhase) { phase in
             if phase == .active { Task { await UnifiedRefreshCoordinator.shared.foregroundOpportunity() } }
+            if phase == .background { UnifiedBackgroundRefresh.schedule() }
         }
         .onReceive(pub) { out in
             if let scene1 = sceneDelegate.window?.windowScene, let scene2 = out.object as? UIWindowScene, scene1 == scene2 {
@@ -126,6 +127,10 @@ struct LCTabView: View {
         repeat {
             if url.isFileURL {
                 sharedModel.selectedTab = .apps
+                break
+            }
+            if url.scheme?.lowercased() == "sidestore", url.host?.lowercased() == "source" {
+                sharedModel.selectedTab = .sources
                 break
             }
             if url.scheme?.lowercased() == "sidestore" {

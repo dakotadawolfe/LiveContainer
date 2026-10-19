@@ -9,6 +9,7 @@ import Foundation
 import SwiftUI
 import UIKit
 import CryptoKit
+import SideStoreSupport
 
 struct AltStoreSourceAppVersion: Identifiable, Hashable {
     let id = UUID()
@@ -519,6 +520,7 @@ struct LCSourcesView: View {
                                     onRefresh: { Task { await viewModel.refreshSource(item) } },
                                     onInstall: { install(app: $0, sourceURL: item.url) },
                                     onRemove: { sourcePendingRemoval = item },
+                                    duplicateCounts: duplicateCounts,
                                     toggleExpanded: { toggleExpansion(for: item.id) }
                                 )
                                 .padding(.horizontal)
@@ -645,6 +647,14 @@ struct LCSourcesView: View {
             partialResult + filteredApps(for: item).count
         }
     }
+
+    private var duplicateCounts: [String: Int] {
+        var counts: [String: Int] = [:]
+        for source in viewModel.sources {
+            for identifier in Set((source.source?.apps ?? []).map(\.bundleIdentifier)) { counts[identifier, default: 0] += 1 }
+        }
+        return counts
+    }
     
     private func filteredApps(for item: AltStoreSourcesViewModel.SourceItem) -> [AltStoreSourceApp] {
         guard let source = item.source else { return [] }
@@ -750,6 +760,7 @@ private struct ManageSourcesSheet: View {
     @State private var manualSourceValue = ""
     @State private var isAddingManual = false
     @State private var sourcePendingRemoval: AltStoreSourcesViewModel.SourceItem?
+    @State private var editingSource: AltStoreSourcesViewModel.SourceItem?
     @FocusState private var isManualFieldFocused: Bool
     
     var body: some View {
@@ -779,6 +790,13 @@ private struct ManageSourcesSheet: View {
                                     sourcePendingRemoval = item
                                 } label: {
                                     Label("lc.sources.removeSource".loc, systemImage: "trash")
+                                }
+                            }
+                            .swipeActions(edge: .leading) {
+                                Button("Edit") {
+                                    editingSource = item
+                                    manualSourceValue = item.url.absoluteString
+                                    isManualFieldFocused = true
                                 }
                             }
                         }
@@ -865,6 +883,12 @@ private struct ManageSourcesSheet: View {
         Task {
             let success = await onAdd(trimmed)
             if success {
+                if let editingSource,
+                   let replacement = viewModel.sources.last, replacement.source != nil,
+                   replacement.url != editingSource.url {
+                    viewModel.removeSource(editingSource)
+                    self.editingSource = nil
+                }
                 manualSourceValue = ""
                 isManualFieldFocused = false
             }
@@ -881,6 +905,7 @@ private struct AltStoreSourceSectionView: View {
     let onRefresh: () -> Void
     let onInstall: (AltStoreSourceApp) -> Void
     let onRemove: () -> Void
+    let duplicateCounts: [String: Int]
     let toggleExpanded: () -> Void
     
     var body: some View {
@@ -943,6 +968,10 @@ private struct AltStoreSourceSectionView: View {
                 VStack(spacing: 12) {
                     ForEach(filteredApps[0..<min(50, filteredApps.count)]) { app in
                         LCSourceAppBanner(app: app, source: source, installAction: onInstall)
+                        if duplicateCounts[app.bundleIdentifier, default: 0] > 1 {
+                            Text("Available in \(duplicateCounts[app.bundleIdentifier, default: 0]) sources. This copy is from \(source.name).")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
                     }
                     if filteredApps.isEmpty {
                         if source.apps.isEmpty || isFiltering {
@@ -970,6 +999,15 @@ private struct LCSourceAppBanner: View {
     let app: AltStoreSourceApp
     let source: AltStoreSource
     let installAction: (AltStoreSourceApp) -> Void
+    @State private var showingDetails = false
+    @ObservedObject private var signing = UnifiedRefreshCoordinator.shared
+
+    private var updateAvailable: Bool {
+        guard let latest = app.latestVersion?.version else { return false }
+        let guests = DataManager.shared.model.apps.filter { $0.appInfo.bundleIdentifier() == app.bundleIdentifier }.map(\.version)
+        let devices = signing.apps.filter { $0.bundleID == app.bundleIdentifier }.map(\.version)
+        return (guests + devices).contains { $0.compare(latest, options: .numeric) == .orderedAscending }
+    }
     
     @AppStorage("dynamicColors") private var dynamicColors = true
     @Environment(\.colorScheme) var colorScheme
@@ -1032,6 +1070,7 @@ private struct LCSourceAppBanner: View {
                         .font(.system(size: 12))
                         .foregroundColor(textColor)
                         .lineLimit(1)
+                    if updateAvailable { Text("Update available").font(.caption.bold()) }
                     if !subtitleText.isEmpty {
                         Text(subtitleText)
                             .font(.system(size: 11))
@@ -1040,7 +1079,8 @@ private struct LCSourceAppBanner: View {
                     }
                 }
             }
-            .allowsHitTesting(false)
+            .contentShape(Rectangle())
+            .onTapGesture { showingDetails = true }
             Spacer()
             Button {
                 installAction(app)
@@ -1067,6 +1107,28 @@ private struct LCSourceAppBanner: View {
         .background {
             RoundedRectangle(cornerSize: CGSize(width: 22, height: 22))
                 .fill(backgroundColor)
+        }
+        .sheet(isPresented: $showingDetails) {
+            NavigationView {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text(app.name).font(.largeTitle.bold())
+                        Text(metadataText).font(.caption)
+                        Text("Source: \(source.name)")
+                        Text(app.description ?? app.subtitle ?? "No description supplied.")
+                        if let notes = app.latestVersion?.localizedDescription { Text("Release notes").font(.headline); Text(notes) }
+                        ScrollView(.horizontal) {
+                            HStack {
+                                ForEach(app.screenshots, id: \.self) { url in
+                                    AsyncImage(url: url) { image in image.resizable().scaledToFit() } placeholder: { ProgressView() }
+                                        .frame(width: 180, height: 320)
+                                }
+                            }
+                        }
+                        Button("Install") { showingDetails = false; installAction(app) }.buttonStyle(.borderedProminent)
+                    }.padding()
+                }.toolbar { Button("Done") { showingDetails = false } }
+            }
         }
     }
 }

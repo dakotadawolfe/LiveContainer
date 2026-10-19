@@ -15,26 +15,6 @@ public struct ManagedDeviceApp: Codable, Identifiable {
     public let isHost: Bool
 }
 
-public enum RefreshPolicy: String, Codable, CaseIterable, Identifiable {
-    case automatic, hours48, hours24, manual
-    public var id: String { rawValue }
-    public var title: String {
-        switch self {
-        case .automatic: return "Automatic when eligible"
-        case .hours48: return "48 hours before expiration"
-        case .hours24: return "24 hours before expiration"
-        case .manual: return "Manual only"
-        }
-    }
-    public var threshold: TimeInterval? {
-        switch self {
-        case .manual: return nil
-        case .hours24: return 24 * 3600
-        default: return 48 * 3600
-        }
-    }
-}
-
 public struct RefreshEvent: Codable, Identifiable {
     public let id: UUID
     public let date: Date
@@ -116,8 +96,8 @@ public final class UnifiedRefreshCoordinator: ObservableObject {
     }
 
     public static func isRenewal(before: InstalledHostProfile, after: InstalledHostProfile) -> Bool {
-        after.team == before.team && after.applicationID == before.applicationID &&
-        after.uuid != before.uuid && after.expires > before.expires && after.expires > Date()
+        RefreshRules.isRenewal(oldExpiry: before.expires, newExpiry: after.expires, oldID: before.uuid, newID: after.uuid,
+                              oldTeam: before.team, newTeam: after.team, oldApp: before.applicationID, newApp: after.applicationID, now: Date())
     }
 
     public static func isCombined(_ bundle: URL) -> Bool {
@@ -142,12 +122,12 @@ public final class UnifiedRefreshCoordinator: ObservableObject {
 
     public func foregroundOpportunity() async {
         verifyHostAfterLaunch()
-        guard !busy, let threshold = policy.threshold,
+        guard !busy, policy.threshold != nil,
               lastAttempt.map({ Date().timeIntervalSince($0) >= 6 * 3600 }) ?? true else { return }
         do {
             try await synchronize()
             let expirations = apps.map(\.expires) + [hostProfile?.expires].compactMap { $0 }
-            if expirations.contains(where: { $0.timeIntervalSinceNow <= threshold }) {
+            if RefreshRules.shouldAttempt(policy: policy, expirations: expirations, lastAttempt: lastAttempt, now: Date()) {
                 try await refresh()
             }
         } catch {

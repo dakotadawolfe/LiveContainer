@@ -25,6 +25,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p build-logs
+          swift test 2>&1 | tee build-logs/rules-tests.log
+          python3 -m unittest discover -s Tests -p 'test_*.py' -v 2>&1 | tee build-logs/packaging-tests.log
           xcodebuild -version | tee build-logs/toolchain.log
           xcodebuild archive -project LiveContainer.xcodeproj -scheme LiveContainer -archivePath archive -sdk iphoneos -arch arm64 -configuration Release CODE_SIGNING_ALLOWED=NO 2>&1 | tee build-logs/archive.log
       - name: Build pinned embedded SideStore
@@ -42,6 +44,7 @@ jobs:
         run: |
           set -euo pipefail
           SIDESTORE_IPA="$PWD/.build/SideStore/SideStore.ipa" bash .github/build_github.sh 2>&1 | tee build-logs/package.log
+          python3 scripts/inspect_ipa.py LiveContainer+SideStore.ipa | tee build-logs/ipa-inspection.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
