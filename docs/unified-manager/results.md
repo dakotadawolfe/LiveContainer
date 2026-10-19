@@ -1,6 +1,18 @@
 # Build and validation record — 2026-10-19 UTC
 
-Status: **development preview built; Apple ID login reported working; live remote pairing and DDI mount confirmed by device Health Check**. Device registration and self-installation still require confirmation. This is not yet an accepted self-maintaining replacement for Zeus.
+Status: **download-queue preview built and inspected; 22 automated tests passed**. On the previous build the user reports working Apple ID login, device and container installation, guest launch, and combined-IPA self-installation/refresh. Installed-profile renewal comparisons, specifically identified JIT-required guest execution, the new queue's device behavior, and the seven-day trial remain unverified. This is not yet an accepted self-maintaining replacement for Zeus.
+
+## Download queue build
+
+- Artifact: `LiveContainer+SideStore.ipa`, 37,787,685 bytes.
+- Source commit: `e008fddabddcc7f04e83ba360d6ae3547684a4e6` on `main`.
+- SHA-256: `86065f5c55f5fa564b98b4e003e7ef579407121c2a1b53bf02e958796ee6ff34`.
+- [Successful macOS build](https://github.com/dakotadawolfe/LiveContainer/actions/runs/39209931407), Xcode 26.6 (17F113).
+- Swift tests: 16 passed, including 10 queue/recovery/filesystem tests. Python packaging/entitlement tests: 6 passed. Zero failures.
+- StikJIT, host archive, embedded SideStore, combined packaging and entitlement inspection: passed.
+- Downloaded IPA: SHA-256 matches CI, all ZIP CRCs pass, expected source commit and queue implementation found in `LiveContainerSwiftUI.framework`, all four extensions retained. SideStore, SideStoreSupport, StikJIT helper/runtime and intent metadata remain present.
+- The archive is ad-hoc signed for installation with the existing developer-signing workflow; CI has not signed it with the user's Apple ID or tested the new queue on an iPhone.
+- [Queue behavior and physical-device checks](downloads.md). The previous working release remains available for recovery. Two earlier CI attempts for this feature were intentionally cancelled after newer changes superseded them; the completed run above is the delivered artifact.
 
 ## Reported device evidence
 
@@ -18,7 +30,7 @@ Later screenshots confirm both active and preferred protocols are `rppairing` af
 
 Two user-supplied console logs were inspected privately, including a fresh process launch at 2026-10-19 00:08 device time with Minimuxer logging enabled. TCP probes succeed, the remote record parses, and `tunnel_create_rppairing_with_options` fails with connection reset or early EOF before the device ID can be read. No successful tunnel is recorded. The fresh launch has overlapping startup calls, but later separate attempts also fail; this does not establish concurrency as the cause. The release gateway enables only native error-level logging, so these logs do not identify the individual failed handshake step or prove an invalid pairing key. A USB-created remote record, independently validated with idevice_pair, is the next proposed comparison and has not been tested. No raw logs, account identifiers or pairing material are committed.
 
-## Delivered build
+## Previous bootstrap build
 
 After repeating pairing, the user supplied a 00:12 device screenshot on build 1476cd5 showing SideStore Ready, Wi-Fi active, device reachable, pairing file verified, and DDI mounted, using Remote Server mode with endpoint 10.7.0.1. This establishes a successful live pairing check after the earlier failures. The user reported repeating the pairing flow; no USB comparison was reported. It does not establish the exact cause of the previous resets, Apple device registration, an installation, debugger attachment, or guest JIT execution. The next gates are confirmation of Apple device registration and full combined-IPA self-installation, followed by installed-profile renewal verification.
 

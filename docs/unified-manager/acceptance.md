@@ -1,6 +1,6 @@
 # Physical-device acceptance record
 
-Status: **Apple ID login reported successful; live pairing and DDI mount confirmed in Health Check on build 1476cd5**. The earlier incomplete Zeus installation was deleted. Device registration, installation and self-refresh remain unverified. See results.md for the reported evidence. No complete acceptance item below is passed by CI. Record artifact SHA-256, commit, device model, exact iOS build, signing team (keep identifiers private), test time, observations, and failure evidence. Never put credentials, private keys, anisette payloads, UDIDs or pairing contents in public logs.
+Status: **the user reports working login, device/container installs, guest launch and combined-IPA self-installation/refresh on the previous build**. Pairing and DDI mount were confirmed in Health Check on build 1476cd5. The incomplete Zeus installation was deleted and Impactor was used for bootstrap. Installed-profile before/after evidence and the full seven-day trial remain outstanding. The new download queue requires the [additional device checks](downloads.md). See results.md for reported evidence and the new build's CI results. No complete acceptance item below is passed by CI. Record artifact SHA-256, commit, device model, exact iOS build, signing team (keep identifiers private), test time, observations, and failure evidence. Never put credentials, private keys, anisette payloads, UDIDs or pairing contents in public logs.
 
 ## Bootstrap regression checks
 
@@ -16,7 +16,7 @@ Status: **Apple ID login reported successful; live pairing and DDI mount confirm
 - [ ] Embedded SideStore opens with only one manager Home Screen icon; no separate SideStore/StikDebug installed.
 - [x] Apple ID login: user reports success on build 1476cd5; embedded Settings shows an account. Apple device registration is a separate pending check.
 - [ ] Record the successful 2FA path and verify certificate generation/import.
-- [x] Live device connection: after repeated pairing, Health Check shows SideStore Ready, reachable device, verified pairing and mounted DDI (00:12 screenshot, build 1476cd5). Installation through this transport remains unverified.
+- [x] Live device connection: after repeated pairing, Health Check shows SideStore Ready, reachable device, verified pairing and mounted DDI (00:12 screenshot, build 1476cd5). The user subsequently reported successful installations.
 - [ ] Apple device registration completes after the pairing correction.
 - [ ] Correctly self-install the complete IPA through embedded SideStore as required by issue 1629.
 - [ ] Verify host Team ID, bundle ID, App Groups, keychain groups, extension identities and get-task-allow after signing.
