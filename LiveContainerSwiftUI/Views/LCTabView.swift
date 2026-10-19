@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import SideStoreSupport
 
 struct LCTabView: View {
     @State var errorShow = false
@@ -26,21 +27,24 @@ struct LCTabView: View {
             if DataManager.shared.model.multiLCStatus != 2 {
                 LCSourcesView()
                     .tabItem {
-                        Label("lc.tabView.sources".loc, systemImage: "books.vertical")
+                        Label("Discover", systemImage: "books.vertical")
                     }
                     .tag(LCTabIdentifier.sources)
             }
             LCAppListView()
                 .tabItem {
-                    Label("lc.tabView.apps".loc, systemImage: "square.stack.3d.up.fill")
+                    Label("Installed", systemImage: "square.stack.3d.up.fill")
                 }
                 .tag(LCTabIdentifier.apps)
             if DataManager.shared.model.multiLCStatus != 2 {
-                LCTweaksView()
+                UnifiedRefreshView()
                     .tabItem{
-                        Label("lc.tabView.tweaks".loc, systemImage: "wrench.and.screwdriver")
+                        Label("Refresh", systemImage: "arrow.clockwise")
                     }
-                    .tag(LCTabIdentifier.tweaks)
+                    .tag(LCTabIdentifier.refresh)
+                UnifiedJITView()
+                    .tabItem { Label("JIT", systemImage: "bolt") }
+                    .tag(LCTabIdentifier.jit)
             }
             
             LCSettingsView()
@@ -101,6 +105,10 @@ struct LCTabView: View {
             checkAndSaveBundleId()
             checkGetTaskAllow()
             checkPrivateContainerBookmark()
+            await UnifiedRefreshCoordinator.shared.foregroundOpportunity()
+        }
+        .onChange(of: scenePhase) { phase in
+            if phase == .active { Task { await UnifiedRefreshCoordinator.shared.foregroundOpportunity() } }
         }
         .onReceive(pub) { out in
             if let scene1 = sceneDelegate.window?.windowScene, let scene2 = out.object as? UIWindowScene, scene1 == scene2 {

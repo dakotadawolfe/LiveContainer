@@ -1,3 +1,4 @@
+set -euo pipefail
 # copy lc
 wget https://github.com/LiveContainer/dylibify/releases/download/1.0/dylibify
 chmod +x dylibify
@@ -41,7 +42,12 @@ mv ./tmp/SideStoreSupport.framework Payload/LiveContainer.app/Frameworks
 
 # download SideStore
 cd tmp
-wget https://github.com/LiveContainer/SideStore/releases/download/nightly/SideStore.ipa
+if [ -n "${SIDESTORE_IPA:-}" ]; then
+    cp "$SIDESTORE_IPA" SideStore.ipa
+else
+    curl --fail --location https://api.github.com/repos/LiveContainer/SideStore/releases/assets/649969380 -H 'Accept: application/octet-stream' -o SideStore.ipa
+    echo 'f9d2d9af51285dcbdece08c51aadc02e8a2d756da6ca8dfca16724c801ae2fcd  SideStore.ipa' | shasum -a 256 -c -
+fi
 unzip SideStore.ipa
 cd ..
 
@@ -67,10 +73,10 @@ mv ./Payload/LiveContainer.app/Frameworks/SideStoreApp.framework/PlugIns/AltWidg
 mv ./Payload/LiveContainer.app/PlugIns/LiveWidgetExtension.appex/AltWidgetExtension ./Payload/LiveContainer.app/PlugIns/LiveWidgetExtension.appex/LiveWidgetExtension
 
 # Sign
-rm -r .zsign_cache
-find payloadlc/Payload -type d -name "_CodeSignature" -exec rm -r {} +
+find Payload -type d -name "_CodeSignature" -exec rm -r {} +
 
 ldid -S.github/sidelc/LiveWidgetExtension_adhoc.xml ./Payload/LiveContainer.app/PlugIns/LiveWidgetExtension.appex/LiveWidgetExtension
 
 # package
+/usr/libexec/PlistBuddy -c 'Add :LCUnifiedManager bool true' ./Payload/LiveContainer.app/Info.plist
 zip -r "$scheme+SideStore.ipa" "Payload" -x "._*" -x ".DS_Store" -x "__MACOSX"

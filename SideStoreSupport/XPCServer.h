@@ -14,6 +14,7 @@ __attribute__((swift_attr("@Sendable")))
 - (void)finish:(NSString*)error;
 - (void)onConnection:(NSXPCConnection*)connection;
 - (void)finishedLaunching;
+- (void)receiveManagedSnapshot:(NSData*)data;
 - (void)addNotificationRequest:(UNNotificationRequest*)request;
 - (void)removePendingNotificationRequestsWithIdentifiers:(NSArray<NSString*>*)identifiers;
 @end

@@ -27,11 +27,21 @@ jobs:
           mkdir -p build-logs
           xcodebuild -version | tee build-logs/toolchain.log
           xcodebuild archive -project LiveContainer.xcodeproj -scheme LiveContainer -archivePath archive -sdk iphoneos -arch arm64 -configuration Release CODE_SIGNING_ALLOWED=NO 2>&1 | tee build-logs/archive.log
+      - name: Build pinned embedded SideStore
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/LiveContainer/SideStore.git .build/SideStore
+          git -C .build/SideStore checkout ee3cc16a67f9fed766f79a0ed70938f0f8ad5a07
+          git -C .build/SideStore submodule update --init --recursive
+          python3 scripts/prepare_sidestore.py .build/SideStore
+          brew install ldid
+          (cd .build/SideStore && make build fakesign ipa) 2>&1 | tee build-logs/sidestore.log
       - name: Package combined IPA
         shell: bash
         run: |
           set -euo pipefail
-          bash .github/build_github.sh 2>&1 | tee build-logs/package.log
+          SIDESTORE_IPA="$PWD/.build/SideStore/SideStore.ipa" bash .github/build_github.sh 2>&1 | tee build-logs/package.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:

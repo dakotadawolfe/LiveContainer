@@ -8,6 +8,7 @@
 #include "XPCServer.h"
 #include "../LiveContainer/utils.h"
 #include "../LiveContainer/LCSharedUtils.h"
+#import <objc/message.h>
 @import UIKit;
 
 @interface SideStoreClient(Swift)
@@ -64,7 +65,22 @@ void installSideStoreHooks(void);
     if(!handler) {
         return;
     }
-    [self performRefreshForRealWithIdentifier:identifier mangledTypeName:mangledTypeName server:handler.server];
+    if ([identifier hasPrefix:@"unified:"]) {
+        NSData *request = [[NSData alloc] initWithBase64EncodedString:[identifier substringFromIndex:8] options:0];
+        Class bridge = NSClassFromString(@"LCUnifiedManagerBridge");
+        SEL action = NSSelectorFromString(@"execute:reply:");
+        if (!request || !bridge || ![bridge respondsToSelector:action]) {
+            [handler.server finish:@"The bundled SideStore service is incompatible. Reinstall the complete combined IPA."];
+            return;
+        }
+        void (^reply)(NSData *, NSString *) = ^(NSData *data, NSString *error) {
+            if (data) [handler.server receiveManagedSnapshot:data];
+            [handler.server finish:error];
+        };
+        ((void (*)(id, SEL, NSData *, id))objc_msgSend)(bridge, action, request, reply);
+    } else {
+        [self performRefreshForRealWithIdentifier:identifier mangledTypeName:mangledTypeName server:handler.server];
+    }
 }
 
 @end

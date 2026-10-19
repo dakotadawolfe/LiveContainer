@@ -313,6 +313,8 @@ extension NSNotification {
 }
 
 public enum LCTabIdentifier: Hashable {
+    case refresh
+    case jit
     case sources
     case apps
     case tweaks

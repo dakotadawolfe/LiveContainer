@@ -250,16 +250,10 @@ final class AltStoreSourcesViewModel: ObservableObject {
         guard !trimmed.isEmpty else {
             return nil
         }
-        if trimmed.hasPrefix("/") {
-            return URL(fileURLWithPath: trimmed)
-        }
-        if let url = URL(string: trimmed), let scheme = url.scheme, !scheme.isEmpty {
-            return url
-        }
-        if let httpsURL = URL(string: "https://\(trimmed)") {
-            return httpsURL
-        }
-        return nil
+        let value = trimmed.contains("://") ? trimmed : "https://" + trimmed
+        guard let url = URL(string: value), url.scheme?.lowercased() == "https",
+              let host = url.host, !host.isEmpty, url.user == nil, url.password == nil else { return nil }
+        return url
     }
 }
 
@@ -317,6 +311,9 @@ private extension AltStoreSourcesViewModel {
 enum AltStoreSourceLoader {
     static func load(from url: URL) async throws -> (AltStoreSource, Data) {
         let (data, response) = try await URLSession.shared.data(from: url)
+        guard response.url?.scheme == "https", data.count <= 20 * 1024 * 1024 else {
+            throw NSError(domain: "AltStoreSource", code: 1, userInfo: [NSLocalizedDescriptionKey: "Source must remain on HTTPS and be smaller than 20 MB."])
+        }
         if let httpResponse = response as? HTTPURLResponse,
            !(200...299).contains(httpResponse.statusCode) {
             throw NSError(domain: "AltStoreSource", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "HTTP \(httpResponse.statusCode)"])

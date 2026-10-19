@@ -8,6 +8,7 @@
 import Combine
 import SwiftUI
 import UniformTypeIdentifiers
+import SideStoreSupport
 
 class SearchContext: ObservableObject {
     @Published var query: String = ""
@@ -50,6 +51,11 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     
     @State var installOptions: [AppReplaceOption]
     @StateObject var installReplaceAlert = AlertHelper<AppReplaceOption>()
+    @StateObject private var destinationAlert = AlertHelper<InstallDestination>()
+    @State private var selectedDestination: InstallDestination?
+    @State private var installSource: URL?
+    @State private var installDownload: URL?
+    @State private var sourceBundleID: String?
     
     @State var webViewOpened = false
     @State var webViewURL : URL = URL(string: "about:blank")!
@@ -132,6 +138,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                 .hidden()
                 
                 LazyVStack {
+                    if UserDefaults.sideStoreExist() { ManagedDeviceAppsView() }
                     ForEach(filteredApps, id: \.self) { app in
                         LCAppBanner(appModel: app, delegate: self)
                     }
@@ -300,6 +307,13 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
         }, onDismiss: {
             choosingIPA = false
         })
+        .confirmationDialog("Choose installation method", isPresented: $destinationAlert.show, titleVisibility: .visible) {
+            Button("Install to Device") { destinationAlert.close(result: .device) }
+            Button("Install in LiveContainer") { destinationAlert.close(result: .liveContainer) }
+            Button("Cancel", role: .cancel) { destinationAlert.close(result: nil) }
+        } message: {
+            Text("Device apps use Apple ID signing slots and require refresh. LiveContainer guests share the manager’s slot and have compatibility restrictions. Existing data is never migrated automatically.")
+        }
         .alert("lc.appList.installation".loc, isPresented: $installReplaceAlert.show) {
             ForEach(installOptions, id: \.self) { installOption in
                 Button(role: installOption.isReplace ? .destructive : nil, action: {
@@ -428,6 +442,11 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.InstallAppNotification)) { obj in
             if let obj2 = obj.object as? [String: Any], let installUrl = obj2["url"] as? URL {
+                guard !installprogressVisible, !UnifiedRefreshCoordinator.shared.busy else { return }
+                selectedDestination = (obj2["destination"] as? String).flatMap(InstallDestination.init(rawValue:))
+                installSource = obj2["source"] as? URL
+                installDownload = installUrl
+                sourceBundleID = obj2["bundleID"] as? String
                 Task { await installFromUrl(urlStr: installUrl.absoluteString) }
             }
         }
@@ -588,6 +607,29 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     }
     
     func installIpaFile(_ url:URL) async throws {
+        defer {
+            selectedDestination = nil; installSource = nil; installDownload = nil; sourceBundleID = nil
+            installprogressVisible = false
+        }
+        let preference = UserDefaults.standard.string(forKey: "LCDefaultInstallDestination") ?? "ask"
+        let destination: InstallDestination?
+        if let selectedDestination { destination = selectedDestination }
+        else if let preferred = InstallDestination(rawValue: preference) { destination = preferred }
+        else { destination = await destinationAlert.open() }
+        guard let destination else { return }
+        if destination == .device {
+            // Copy into the existing embedded SideStore home before crossing the helper boundary.
+            let inbox = LCPath.docPath.appendingPathComponent("SideStore/Documents/ManagerImports")
+            try FileManager.default.createDirectory(at: inbox, withIntermediateDirectories: true)
+            let staged = inbox.appendingPathComponent(UUID().uuidString + ".ipa")
+            try FileManager.default.copyItem(at: url, to: staged)
+            defer { try? FileManager.default.removeItem(at: staged) }
+            try await UnifiedRefreshCoordinator.shared.install(url: staged)
+            if let bundleID = sourceBundleID {
+                try UnifiedInstallRecords.shared.record(bundleID: bundleID, source: installSource, download: installDownload, destination: .device)
+            }
+            return
+        }
         let fm = FileManager()
         
         let installProgress = Progress.discreteProgress(totalUnitCount: 100)
@@ -751,6 +793,9 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             finalNewApp.spoofSDKVersion = true
         }
         finalNewApp.installationDate = Date.now
+        if let bundleID = finalNewApp.bundleIdentifier() {
+            try UnifiedInstallRecords.shared.record(bundleID: bundleID, source: installSource, download: installDownload, destination: .liveContainer)
+        }
         
         DispatchQueue.main.async {
             if let appToReplace {

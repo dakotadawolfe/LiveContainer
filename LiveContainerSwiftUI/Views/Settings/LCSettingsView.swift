@@ -87,6 +87,18 @@ struct LCSettingsView: View {
     var body: some View {
         NavigationView {
             Form {
+                Section("Unified manager") {
+                    Button("Apple ID / Signing") { LCUtils.openSideStore() }
+                    Picker("Default installation method", selection: Binding(
+                        get: { UserDefaults.standard.string(forKey: "LCDefaultInstallDestination") ?? "ask" },
+                        set: { UserDefaults.standard.set($0, forKey: "LCDefaultInstallDestination") })) {
+                        Text("Always ask").tag("ask")
+                        Text("Device").tag("device")
+                        Text("LiveContainer").tag("liveContainer")
+                    }
+                    NavigationLink("Sources", destination: LCSourcesView())
+                    NavigationLink("Tweaks", destination: LCTweaksView())
+                }
                 if sharedModel.multiLCStatus != 2 {
                     Section{
                         if !certificateDataFound {
@@ -206,8 +218,14 @@ struct LCSettingsView: View {
                             }
                         }
                         .betterFileImporter(isPresented: $isChoosingPairingFile, types: [.propertyList], multiple: false) { fileUrls in
-                            try? FileManager.default.moveItem(at: fileUrls[0], to: LCPath.pairingFilePath)
-                            pairingFileFound = true
+                            do {
+                                guard let url = fileUrls.first else { return }
+                                try UnifiedJITView.importPairing(url)
+                                pairingFileFound = true
+                            } catch {
+                                errorInfo = "Pairing import failed. The existing file was preserved."
+                                errorShow = true
+                            }
                         } onDismiss: {
                             isChoosingPairingFile = false
                         }
