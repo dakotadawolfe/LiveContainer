@@ -100,7 +100,7 @@ public final class UnifiedRefreshCoordinator: ObservableObject {
     }
 
     public func verifyHostAfterLaunch() {
-        let bundle = UserDefaults.lcMainBundle()
+        guard let bundle = UserDefaults.lcMainBundle() else { status = "Host bundle unavailable."; return }
         hostProfile = InstalledHostProfile.read(bundle: bundle)
         guard let pending else { return }
         guard pending.processID != getpid() else {

@@ -16,8 +16,8 @@ func performIntentRefresh(identifier: String, mangledTypeName: String, intentPro
     if UserDefaults.isSideStore() {
         try await SideStoreIntentCaller.shared.callRefreshIntent(mangledTypeName: mangledTypeName)
     } else {
-        RefreshHandler.shared.progress = intentProgress
-        try await RefreshHandler.shared.startRefresh(identifier: identifier, mangledName: mangledTypeName)
+        try await UnifiedRefreshCoordinator.shared.refresh()
+        intentProgress.completedUnitCount = 100
     }
 }
 

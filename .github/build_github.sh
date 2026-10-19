@@ -9,11 +9,9 @@ mv "$archive_path.xcarchive/Products/Applications" Payload
 
 # temporarily move sidestore support framrwork to tmp before zip
 mkdir tmp
-mv Payload/LiveContainer.app/Frameworks/SideStoreSupport.framework ./tmp
 
 zip -r "$scheme.ipa" "Payload" -x "._*" -x ".DS_Store" -x "__MACOSX"
 
-mv ./tmp/SideStoreSupport.framework Payload/LiveContainer.app/Frameworks
 
 # put sidestore related keys into Info.plist and settings bundle
 /usr/libexec/PlistBuddy -c 'Add :ALTAppGroups array' ./Payload/LiveContainer.app/Info.plist

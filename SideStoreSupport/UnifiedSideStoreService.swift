@@ -50,10 +50,10 @@ final class RefreshHandler: NSObject, RefreshServer {
             try FileManager.default.createDirectory(at: documents, withIntermediateDirectories: true)
             guard let bookmark = bookmarkForURL(documents),
                   let url = UserDefaults.lcMainBundle().builtInPlugInsURL?.appendingPathComponent("LiveProcess.appex"),
-                  let bundle = Bundle(url: url),
-                  let helper = try NSExtension(identifier: bundle.bundleIdentifier) else {
+                  let bundle = Bundle(url: url) else {
                 throw serviceError("LiveProcess could not start. Reinstall the complete combined IPA, keeping all extensions, and finish embedded SideStore setup.")
             }
+            let helper = try NSExtension(identifier: bundle.bundleIdentifier)
             ext = helper
             helper.setRequestInterruptionBlock { [weak self] _ in
                 Task { @MainActor in self?.fail("SideStore was interrupted. Reopen the manager to verify the installation before retrying.") }
@@ -101,8 +101,14 @@ final class RefreshHandler: NSObject, RefreshServer {
     nonisolated func updateProgress(_ value: Double) {
         Task { @MainActor in self.progress?.completedUnitCount = Int64(max(0, min(1, value)) * 100) }
     }
-    nonisolated func receiveManagedSnapshot(_ data: Data!) {
-        Task { @MainActor in self.snapshot = data }
+    nonisolated func finishManagedRequest(_ data: Data!, error: String!) {
+        Task { @MainActor in
+            self.snapshot = data
+            let waiting = self.completion
+            self.completion = nil
+            if let error { waiting?.resume(throwing: serviceError(error)) }
+            else { waiting?.resume() }
+        }
     }
     nonisolated func finish(_ error: String?) {
         Task { @MainActor in

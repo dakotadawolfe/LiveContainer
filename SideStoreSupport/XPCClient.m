@@ -74,8 +74,7 @@ void installSideStoreHooks(void);
             return;
         }
         void (^reply)(NSData *, NSString *) = ^(NSData *data, NSString *error) {
-            if (data) [handler.server receiveManagedSnapshot:data];
-            [handler.server finish:error];
+            [handler.server finishManagedRequest:data error:error];
         };
         ((void (*)(id, SEL, NSData *, id))objc_msgSend)(bridge, action, request, reply);
     } else {

@@ -481,6 +481,9 @@ struct LCSourcesView: View {
     @StateObject private var viewModel = AltStoreSourcesViewModel()
     @State private var errorMessage: String?
     @State private var sourcePendingRemoval: AltStoreSourcesViewModel.SourceItem?
+    @State private var pendingInstall: AltStoreSourceApp?
+    @State private var pendingSource: URL?
+    @State private var showDestination = false
     @ObservedObject public var searchContext: SearchContext = SearchContext()
     @State private var expandedSources: Set<URL> = []
     @State private var isManagingSources = false
@@ -514,7 +517,7 @@ struct LCSourcesView: View {
                                     isFiltering: isFiltering,
                                     isExpanded: expandedSources.contains(item.id),
                                     onRefresh: { Task { await viewModel.refreshSource(item) } },
-                                    onInstall: install(app:),
+                                    onInstall: { install(app: $0, sourceURL: item.url) },
                                     onRemove: { sourcePendingRemoval = item },
                                     toggleExpanded: { toggleExpansion(for: item.id) }
                                 )
@@ -537,7 +540,7 @@ struct LCSourcesView: View {
                     }
                 }
             }
-            .navigationTitle("lc.tabView.sources".loc)
+            .navigationTitle("Discover")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     if viewModel.isRefreshingAll {
@@ -556,6 +559,13 @@ struct LCSourcesView: View {
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
+        .confirmationDialog("Choose installation method", isPresented: $showDestination, titleVisibility: .visible) {
+            Button("Install to Device") { beginInstall(.device) }
+            Button("Install in LiveContainer") { beginInstall(.liveContainer) }
+            Button("Cancel", role: .cancel) { pendingInstall = nil }
+        } message: {
+            Text("Device installation uses Apple ID provisioning and available app slots. LiveContainer shares the host slot, with guest compatibility limits. Installation does not migrate existing data between methods.")
+        }
         .alert("lc.common.error".loc, isPresented: Binding<Bool>(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } })
@@ -673,16 +683,32 @@ struct LCSourcesView: View {
     }
     
     @MainActor
-    private func install(app: AltStoreSourceApp) {
-        guard let downloadURL = app.latestVersion?.downloadURL else {
+    private func install(app: AltStoreSourceApp, sourceURL: URL) {
+        guard app.latestVersion?.downloadURL != nil else {
             errorMessage = "lc.sources.error.missingDownload".loc
             return
         }
+        pendingInstall = app
+        pendingSource = sourceURL
+        let preference = UserDefaults.standard.string(forKey: "LCDefaultInstallDestination") ?? "ask"
+        if let destination = InstallDestination(rawValue: preference) { beginInstall(destination) }
+        else { showDestination = true }
+    }
+
+    private func beginInstall(_ destination: InstallDestination) {
+        guard let app = pendingInstall, let downloadURL = app.latestVersion?.downloadURL,
+              downloadURL.scheme == "https" else {
+            errorMessage = "IPA downloads must use HTTPS."
+            return
+        }
+        var request: [String: Any] = ["url": downloadURL, "destination": destination.rawValue, "bundleID": app.bundleIdentifier]
+        request["source"] = pendingSource
+        pendingInstall = nil
         withAnimation {
             DataManager.shared.model.selectedTab = .apps
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            NotificationCenter.default.post(name: NSNotification.InstallAppNotification, object: ["url": downloadURL])
+            NotificationCenter.default.post(name: NSNotification.InstallAppNotification, object: request)
         }
 
 
