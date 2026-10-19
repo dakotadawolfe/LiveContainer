@@ -1,3 +1,5 @@
+> **Unified manager development fork:** [Build, setup, and current limitations](docs/unified-manager/README.md). Includes bundled SideStore and StikJIT. Personal Apple ID signing keeps LocalDevVPN external. Physical-device self-refresh and the seven-day trial remain unverified; use the [acceptance checklist](docs/unified-manager/acceptance.md) before relying on it.
+
 <div align="center">
    <img width="217" height="217" src="./screenshots/livecontainer_icon.png" alt="Logo">
 </div>

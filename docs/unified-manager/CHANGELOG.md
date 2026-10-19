@@ -6,11 +6,15 @@
 - Use the complete installed host for unified self-installation; reject incomplete host bundles before re-signing.
 - Journal pending self-refresh before installation; read the installed host profile on subsequent launch and distinguish pending, failed, record-only and verified-host results.
 - Serialize unified operations across requests and helpers; report helper launch, interruption and timeout errors.
+- Give each helper request a separate callback receiver and tear down its connection after completion, preventing a late reply from completing a later operation.
+- Register the background task using the identifier in the signed bundle and replace stale expiration reminders when records change.
 - Add 48/24-hour policies, foreground checks, best-effort BackgroundTasks opportunities, local reminders and existing Refresh All Apps App Intent routing.
 - Add Device/LiveContainer installation selection for source and file pipelines, a configurable default, and source provenance records.
 - Retain the source parser/cache and add HTTPS validation, duplicate-source labels, detail sheets and update indicators.
 - Add Refresh and JIT navigation, device snapshot rows, and retained access to embedded SideStore authentication and management.
 - Copy and validate pairing data atomically instead of moving the original file and reporting unconditional success.
 - Default new configurations to integrated StikJIT, improve connection timeout, gate the host's debug entitlement, and retain guest JIT-less behavior.
+- Validate packaged Mach-O entitlement requests and include the build commit in the combined IPA.
+- Keep external LocalDevVPN for the explicitly selected free-account configuration.
 
 See README.md and acceptance.md in this directory for unresolved functionality and required device validation. This changelog is not a statement that the seven-day acceptance test passed.

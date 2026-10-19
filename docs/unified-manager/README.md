@@ -6,16 +6,18 @@ The project is not accepted as self-maintaining until the physical-device checkl
 
 ## Build
 
-Use the `Unified bundled build` GitHub Actions workflow on the implementation branch, or a Mac with Xcode 26.6 and the dependencies shown in that workflow. Windows cannot run Xcode. The workflow:
+Use the `Unified bundled build` GitHub Actions workflow on `main`, or a Mac with Xcode 26.6 and the dependencies shown in that workflow. Windows cannot run Xcode. The workflow:
 
 1. Checks out this repository and its pinned submodules.
 2. Builds StikJIT at `32287268fa5824f9edce4cb359f5833ce0cf7b00` (1.9.0 sources, including the personalized DDI mounting repair).
 3. Runs Swift refresh-policy tests and Python archive tests.
 4. Archives the LiveContainer host and all existing extensions.
 5. Builds LiveContainer/SideStore at `ee3cc16a67f9fed766f79a0ed70938f0f8ad5a07`, applying the checked-in service overlay with `scripts/prepare_sidestore.py`.
-6. Packages the combined app with `.github/build_github.sh`, preserves entitlement requests using ad-hoc signatures, and inspects the resulting IPA.
+6. Packages the combined app with `.github/build_github.sh`, preserves entitlement requests using ad-hoc signatures, and inspects the resulting IPA and its host/extension entitlement requests. The package records its source commit in `LCUnifiedBuildCommit`.
 
 The overlay aborts if its exact upstream anchors change. Review new upstream APIs before updating the pin. No Apple ID, certificate, private key, pairing file, or device identifier belongs in CI. See the workflow artifacts for complete archive, SideStore, StikJIT, test, and packaging logs.
+
+The packaging script requires `SIDESTORE_IPA` pointing to the overlaid SideStore build. An ordinary upstream SideStore IPA lacks the manager service and is not a valid substitute. The upstream `dylibify` 1.0 packaging asset observed for this build has SHA-256 `6d23f6a2fc4d8442f87caa1161aebe6ecaafd0e8c41ce205da007efb04fc82c7`. CI pins the source revisions and Xcode selection; Homebrew dependencies and runner images may change, so byte-for-byte reproducibility across future runner images is not claimed.
 
 ## Architecture and signing boundaries
 
