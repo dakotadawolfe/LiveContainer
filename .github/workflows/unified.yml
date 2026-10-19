@@ -28,7 +28,7 @@ jobs:
           git clone https://github.com/StikDebug/StikJIT.git .build/StikJIT
           git -C .build/StikJIT checkout 32287268fa5824f9edce4cb359f5833ce0cf7b00
           brew install xcodegen
-          (cd .build/StikJIT && xcodegen generate && xcodebuild archive -project StikJIT.xcodeproj -scheme StikJIT -destination 'generic/platform=iOS' -archivePath build/StikJIT SKIP_INSTALL=NO BUILD_LIBRARY_FOR_DISTRIBUTION=YES CODE_SIGNING_ALLOWED=NO) 2>&1 | tee build-logs/stikjit.log
+          (cd .build/StikJIT && xcodegen generate && xcodebuild archive -project StikJIT.xcodeproj -scheme StikJIT -destination 'generic/platform=iOS' -archivePath build/StikJIT SKIP_INSTALL=NO BUILD_LIBRARY_FOR_DISTRIBUTION=NO SWIFT_EMIT_MODULE_INTERFACE=NO CODE_SIGNING_ALLOWED=NO) 2>&1 | tee build-logs/stikjit.log
           rm -rf StikJITHeadless/StikJIT.xcframework
           xcodebuild -create-xcframework -framework .build/StikJIT/build/StikJIT.xcarchive/Products/Library/Frameworks/StikJIT.framework -output StikJITHeadless/StikJIT.xcframework
       - name: Archive

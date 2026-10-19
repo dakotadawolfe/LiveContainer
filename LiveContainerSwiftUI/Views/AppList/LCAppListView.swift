@@ -591,10 +591,14 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
 
     
     func startInstallApp(_ fileUrl:URL) async {
+        guard !installprogressVisible, !UnifiedRefreshCoordinator.shared.busy else { return }
         do {
             self.installprogressVisible = true
             try await installIpaFile(fileUrl)
-            try FileManager.default.removeItem(at: fileUrl)
+            let temporary = FileManager.default.temporaryDirectory.standardizedFileURL.path + "/"
+            if fileUrl.standardizedFileURL.path.hasPrefix(temporary) {
+                try FileManager.default.removeItem(at: fileUrl)
+            }
         } catch {
             errorInfo = error.localizedDescription
             errorShow = true
@@ -630,6 +634,12 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             }
             return
         }
+        try await UnifiedRefreshCoordinator.shared.withGuestInstallation {
+            try await installGuestIpaFile(url)
+        }
+    }
+
+    private func installGuestIpaFile(_ url: URL) async throws {
         let fm = FileManager()
         
         let installProgress = Progress.discreteProgress(totalUnitCount: 100)
@@ -918,10 +928,16 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             errorShow = true
             return
         }
+        guard installUrl.isFileURL || (installUrl.scheme?.lowercased() == "https" && installUrl.host != nil && installUrl.user == nil && installUrl.password == nil) else {
+            errorInfo = "Choose a local IPA or an HTTPS download URL."
+            errorShow = true
+            return
+        }
         
         self.installprogressVisible = true
         defer {
             self.installprogressVisible = false
+            selectedDestination = nil; installSource = nil; installDownload = nil; sourceBundleID = nil
         }
         
         if installUrl.isFileURL {
@@ -996,7 +1012,8 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
         
         do {
             let fileManager = FileManager.default
-            let destinationURL = fileManager.temporaryDirectory.appendingPathComponent(installUrl.lastPathComponent)
+            let destinationURL = fileManager.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".ipa")
+            defer { try? fileManager.removeItem(at: destinationURL) }
             if fileManager.fileExists(atPath: destinationURL.path) {
                 try fileManager.removeItem(at: destinationURL)
             }

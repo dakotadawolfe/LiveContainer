@@ -145,6 +145,14 @@ public final class UnifiedRefreshCoordinator: ObservableObject {
         try await operate(action: "install", url: url)
     }
 
+    public func withGuestInstallation(_ action: () async throws -> Void) async throws {
+        guard !busy else { throw failure("Another manager operation is running.") }
+        let lock = try acquireLock()
+        busy = true
+        defer { busy = false; flock(lock, LOCK_UN); close(lock) }
+        try await action()
+    }
+
     private func operate(action: String, url: URL? = nil, bundleID: String? = nil) async throws {
         guard !busy else { throw failure("Another manager operation is running.") }
         let lock = try acquireLock()
