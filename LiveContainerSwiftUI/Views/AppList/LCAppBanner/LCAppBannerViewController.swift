@@ -268,6 +268,9 @@ final class LCAppBannerViewController: UIViewController, UIContextMenuInteractio
         }
 
         do {
+            guard !ContainerTransferQueue.shared.isInstallingGuest else {
+                throw "Wait for the container installation to finish before uninstalling a guest."
+            }
             guard let bundlePath = appInfo.bundlePath() else {
                 throw CocoaError(.fileNoSuchFile)
             }

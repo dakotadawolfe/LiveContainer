@@ -18,7 +18,7 @@ struct LCTabView: View {
     @EnvironmentObject var sceneDelegate: SceneDelegate
     @State var shouldToggleMainWindowOpen = false
     @Environment(\.scenePhase) var scenePhase
-    @StateObject var downloadHelper = DownloadHelper()
+    @StateObject var transfers = ContainerTransferQueue.shared
 
     let pub = NotificationCenter.default.publisher(for: UIScene.didDisconnectNotification)
     
@@ -53,8 +53,15 @@ struct LCTabView: View {
                 }
                 .tag(LCTabIdentifier.settings)
         }
-        .downloadAlert(helper: downloadHelper)
-        .environmentObject(downloadHelper)
+        .modifier(TransferQueuePresenter())
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.InstallAppNotification)) { notification in
+            guard let request = notification.object as? [String: Any], let url = request["url"] as? URL,
+                  let raw = request["destination"] as? String, let destination = InstallDestination(rawValue: raw) else { return }
+            do {
+                try transfers.enqueue(url: url, name: request["name"] as? String, destination: destination,
+                                      source: request["source"] as? URL, bundleID: request["bundleID"] as? String)
+            } catch { errorInfo = error.localizedDescription; errorShow = true }
+        }
         .alert("lc.common.error".loc, isPresented: $errorShow){
             Button("lc.common.ok".loc, action: {
             })
@@ -108,7 +115,10 @@ struct LCTabView: View {
             await UnifiedRefreshCoordinator.shared.foregroundOpportunity()
         }
         .onChange(of: scenePhase) { phase in
-            if phase == .active { Task { await UnifiedRefreshCoordinator.shared.foregroundOpportunity() } }
+            if phase == .active {
+                transfers.pump()
+                Task { await UnifiedRefreshCoordinator.shared.foregroundOpportunity() }
+            }
             if phase == .background { UnifiedBackgroundRefresh.schedule() }
         }
         .onReceive(pub) { out in

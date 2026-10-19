@@ -712,15 +712,11 @@ struct LCSourcesView: View {
             errorMessage = "IPA downloads must use HTTPS."
             return
         }
-        var request: [String: Any] = ["url": downloadURL, "destination": destination.rawValue, "bundleID": app.bundleIdentifier]
-        request["source"] = pendingSource
-        pendingInstall = nil
-        withAnimation {
-            DataManager.shared.model.selectedTab = .apps
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            NotificationCenter.default.post(name: NSNotification.InstallAppNotification, object: request)
-        }
+        do {
+            try ContainerTransferQueue.shared.enqueue(url: downloadURL, name: app.name, destination: destination,
+                                                      source: pendingSource, bundleID: app.bundleIdentifier)
+            pendingInstall = nil
+        } catch { errorMessage = error.localizedDescription }
 
 
     }

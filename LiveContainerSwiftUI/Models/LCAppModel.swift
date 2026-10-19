@@ -219,6 +219,9 @@ class LCAppModel: ObservableObject, Hashable {
     
     // You should let LCAppModel.runApp to decide whether to run in multitask mode, but you may override the multitask parameter if necessary
     func runApp(multitask: Bool? = nil, containerFolderName : String? = nil, bundleIdOverride : String? = nil, urlStr : String? = nil, forceJIT: Bool? = nil) async throws{
+        guard await !ContainerTransferQueue.shared.isInstallingGuest else {
+            throw "A container installation is in progress. Check Downloads before launching a guest."
+        }
         if isAppRunning {
             return
         }
@@ -397,6 +400,9 @@ class LCAppModel: ObservableObject, Hashable {
     }
     
     func forceResign() async throws {
+        guard await !ContainerTransferQueue.shared.isInstallingGuest else {
+            throw "Wait for the container installation to finish before signing another guest."
+        }
         if isAppRunning {
             return
         }

@@ -1,11 +1,5 @@
 import Foundation
 
-enum InstallDestination: String, CaseIterable, Identifiable, Codable {
-    case device, liveContainer
-    var id: String { rawValue }
-    var title: String { self == .device ? "Install to Device" : "Install in LiveContainer" }
-}
-
 struct UnifiedInstallRecord: Codable {
     let bundleID: String
     let source: URL?

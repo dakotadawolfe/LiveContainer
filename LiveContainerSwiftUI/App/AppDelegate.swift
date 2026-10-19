@@ -7,6 +7,7 @@ import Intents
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? ) -> Bool {
         application.shortcutItems = nil
         UnifiedBackgroundRefresh.register()
+        _ = ContainerTransferQueue.shared
         if LCUtils.appGroupUserDefault.object(forKey: "LCJITEnablerType") == nil {
             LCUtils.appGroupUserDefault.set(JITEnablerType.StikJITHeadless.rawValue, forKey: "LCJITEnablerType")
         }
@@ -38,6 +39,12 @@ import Intents
         return true
     }
     
+    func application(_ application: UIApplication, handleEventsForBackgroundURLSession identifier: String,
+                     completionHandler: @escaping () -> Void) {
+        guard identifier == ContainerTransferQueue.sessionIdentifier else { completionHandler(); return }
+        ContainerTransferQueue.shared.backgroundCompletion = completionHandler
+    }
+
     func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
         let configuration = UISceneConfiguration(name: nil, sessionRole: connectingSceneSession.role)
         configuration.delegateClass = SceneDelegate.self

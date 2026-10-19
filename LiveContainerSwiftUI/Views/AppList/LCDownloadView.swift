@@ -1,195 +1,86 @@
-//
-//  LCDownloadView.swift
-//  LiveContainerSwiftUI
-//
-//  Created by s s on 2025/1/22.
-//
-
 import SwiftUI
 
-public final class DownloadHelper : ObservableObject {
-    @Published var downloadProgress : Float = 0.0
-    @Published var downloadedSize : Int64 = 0
-    @Published var totalSize : Int64 = 0
-    @Published var isDownloading = false
-    @Published var cancelled = false
-    private var downloadTask: URLSessionDownloadTask?
-    private var continuation: UnsafeContinuation<(), Never>?
-    
-    func download(url: URL, to: URL) async throws {
-        var ansError: Error? = nil
+struct TransferQueueView: View {
+    @ObservedObject var queue = ContainerTransferQueue.shared
+    @ObservedObject var installer = ContainerInstaller.shared
+    @ObservedObject var replacement = ContainerInstaller.shared.installReplaceAlert
+    @Environment(\.dismiss) private var dismiss
 
-        await MainActor.run {
-            cancelled = false
-            
-            downloadProgress = 0.0
-            downloadedSize = 0
-            totalSize = 0
-            
-            isDownloading = true
-        }
-        
-        await withUnsafeContinuation { c in
-            continuation = c
-            
-            let bgConfig = URLSessionConfiguration.background(withIdentifier: "com.livecontainer.download.\(UUID().uuidString)")
-            let session = URLSession(configuration: bgConfig, delegate: DownloadDelegate(progressCallback: { progress, downloaded, total in
-                Task{ await MainActor.run {
-                    self.downloadProgress = progress
-                    self.downloadedSize = downloaded
-                    self.totalSize = total
-                }}
-            }, completeCallback: {tempFileURL, error in
-                Task{ await MainActor.run {
-                    self.isDownloading = false
-                }}
-                if let error {
-                    print(error)
-                    ansError = error
-                }
-                if let tempFileURL {
-                    do {
-                        let fm = FileManager.default
-                        print(to)
-                        try fm.moveItem(at: tempFileURL, to: to)
-                    } catch {
-                        ansError = error
+    var body: some View {
+        NavigationView {
+            List {
+                if replacement.show {
+                    Section("Choose how to install this app") {
+                        Text("lc.appList.installReplaceTip".loc).font(.footnote)
+                        ForEach(installer.installOptions, id: \.self) { option in
+                            Button(role: option.isReplace ? .destructive : nil) {
+                                replacement.close(result: option)
+                            } label: {
+                                Text(option.isReplace ? "Replace \(option.appToReplace?.appInfo.displayName() ?? option.nameOfFolderToInstall)" : "lc.appList.installAsNew".loc)
+                            }
+                        }
+                        Button("lc.appList.abortInstallation".loc, role: .cancel) { replacement.close(result: nil) }
                     }
                 }
-                if self.continuation != nil {
-                    c.resume()
+                Section {
+                    Text("Keep browsing while up to three IPAs download. Installations run one at a time. Downloads can continue while iOS backgrounds the app; reopen the manager to finish pending installations. Force-quitting can interrupt downloads.")
+                        .font(.footnote).foregroundStyle(.secondary)
                 }
-
-            }), delegateQueue: .main)
-
-            downloadTask = session.downloadTask(with: url)
-            downloadTask?.resume()
-        }
-        if let ansError {
-            throw ansError
-        }
-    }
-    
-    func cancel() {
-        if let continuation {
-            continuation.resume()
-        }
-        cancelled = true
-        continuation = nil
-        downloadTask?.cancel()
-        isDownloading = false
+                if let error = queue.storageError { Text(error).foregroundStyle(.red) }
+                if queue.items.isEmpty { Text("No downloads yet.").foregroundStyle(.secondary) }
+                ForEach(queue.items) { item in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(item.name.isEmpty ? "IPA download" : item.name).font(.headline)
+                        Text("\(item.destination == .liveContainer ? "LiveContainer" : "Device") · \(item.state.title)")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                        if item.state == .downloading {
+                            if let progress = item.progress { ProgressView(value: progress) }
+                            else { ProgressView() }
+                            Text(ByteCountFormatter.string(fromByteCount: item.received, countStyle: .file)
+                                 + (item.expected > 0 ? " / " + ByteCountFormatter.string(fromByteCount: item.expected, countStyle: .file) : " downloaded"))
+                                .font(.caption).monospacedDigit()
+                        }
+                        if item.state == .installing {
+                            if item.destination == .liveContainer { ProgressView(value: installer.installProgressPercentage) }
+                            else { ProgressView() }
+                        }
+                        if let message = item.message { Text(message).font(.caption).foregroundStyle(.secondary) }
+                        if item.state == .failed {
+                            Button("Retry") { queue.retry(item.id) }
+                        } else if item.state.isActive && item.state != .installing {
+                            Button("Cancel", role: .destructive) { queue.cancel(item.id) }
+                        }
+                    }.padding(.vertical, 4)
+                }
+                Button("Clear finished downloads") { queue.clearFinished() }
+            }
+            .navigationTitle("Downloads")
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+        }.navigationViewStyle(.stack)
     }
 }
 
-struct DownloadAlert : View {
-    @StateObject var helper : DownloadHelper
-    var body: some View {
-        
-        Color.black.opacity(0.2) // Semi-transparent grey background
-            .edgesIgnoringSafeArea(.all) // Covers entire screen
-        
-        VStack {
-            Text("lc.download.downloading".loc)
-                .font(.headline)
-                .padding(.top)
-            
-            ProgressView(value: helper.downloadProgress, total: 1)
-                .padding()
-            
-            Text("\(formatBytes(helper.downloadedSize)) / \(formatBytes(helper.totalSize))")
-                .font(.subheadline)
-                .padding(.bottom)
-            
-            Button(action: cancelDownload) {
-                Text("lc.common.cancel".loc)
-                    .foregroundColor(.red)
-                    .padding(.bottom)
+struct TransferQueuePresenter: ViewModifier {
+    @ObservedObject var queue = ContainerTransferQueue.shared
+    @ObservedObject var installer = ContainerInstaller.shared
+    @ObservedObject var replacement = ContainerInstaller.shared.installReplaceAlert
+
+    func body(content: Content) -> some View {
+        content
+            .safeAreaInset(edge: .top, spacing: 0) {
+                if !queue.items.isEmpty || queue.storageError != nil {
+                    Button { queue.showQueue = true } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: queue.failedCount > 0 ? "exclamationmark.arrow.triangle.2.circlepath" : "arrow.down.circle")
+                            Text(replacement.show ? "Download ready · choose installation option" : (queue.activeCount > 0 ? "Downloads · \(queue.activeCount) active" : "Downloads"))
+                            Spacer()
+                            if queue.failedCount > 0 { Text("\(queue.failedCount) need attention").font(.caption) }
+                            Image(systemName: "chevron.right").font(.caption)
+                        }.font(.subheadline).padding(.horizontal).padding(.vertical, 8)
+                            .background(.regularMaterial)
+                    }.buttonStyle(.plain)
+                }
             }
-        }
-        .frame(width: 300)
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(12)
-        .shadow(radius: 10)
-        .padding()
-    }
-    
-    private func formatBytes(_ bytes: Int64) -> String {
-        let formatter = ByteCountFormatter()
-        formatter.allowedUnits = [.useKB, .useMB, .useGB] // Allow KB, MB, and GB
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: bytes)
-    }
-    
-    func cancelDownload() {
-        helper.cancel()
-    }
-}
-
-public struct DownloadAlertModifier: ViewModifier {
-    @ObservedObject var helper : DownloadHelper
-    @State var show = false
-    
-    public func body(content: Content) -> some View {
-
-        ZStack {
-            content
-            if show {
-                DownloadAlert(helper: helper)
-                
-            }
-            
-        }
-        .onChange(of: helper.isDownloading) { newVal in
-            withAnimation(.easeInOut(duration: 0.1)) {
-                show = newVal
-            }
-        }
-    }
-}
-
-class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
-    let progressCallback: (Float, Int64, Int64) -> Void
-    let completeCallback: (URL?, Error?) -> Void
-
-    init(progressCallback: @escaping (Float, Int64, Int64) -> Void,
-         completeCallback: @escaping (URL?, Error?) -> Void) {
-        self.progressCallback = progressCallback
-        self.completeCallback = completeCallback
-    }
-
-    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
-        let progress = Float(totalBytesWritten) / Float(totalBytesExpectedToWrite)
-        progressCallback(progress, totalBytesWritten, totalBytesExpectedToWrite)
-    }
-
-    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
-        if let httpResponse = downloadTask.response as? HTTPURLResponse {
-            let statusCode = httpResponse.statusCode
-
-            // Check if the status code is in the 2xx range
-            if (200...299).contains(statusCode) {
-                completeCallback(location, nil)
-            } else {
-                completeCallback(location, NSError(domain: "", code: statusCode, userInfo: [NSLocalizedDescriptionKey: "HTTP Error: \(statusCode)"]))
-            }
-        } else {
-            completeCallback(location, NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"]))
-        }
-        
-
-    }
-    
-    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        if let error {
-            completeCallback(nil, error)
-        } else {
-
-        }
-    }
-}
-
-extension View {
-    public func downloadAlert(helper: DownloadHelper) -> some View {
-        self.modifier(DownloadAlertModifier(helper: helper))
+            .sheet(isPresented: $queue.showQueue) { TransferQueueView() }
     }
 }
