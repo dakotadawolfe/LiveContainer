@@ -53,6 +53,7 @@ public final class UnifiedRefreshCoordinator: ObservableObject {
     @Published public var policy: RefreshPolicy = .hours48 { didSet { persist() } }
     public private(set) var lastAttempt: Date?
     private var pending: Pending?
+    private var notificationsEnabled = false
     private let directory: URL
 
     private struct Pending: Codable {
@@ -66,6 +67,7 @@ public final class UnifiedRefreshCoordinator: ObservableObject {
         let events: [RefreshEvent]
         let pending: Pending?
         let lastAttempt: Date?
+        let notificationsEnabled: Bool?
     }
 
     private init() {
@@ -75,6 +77,7 @@ public final class UnifiedRefreshCoordinator: ObservableObject {
            let state = try? JSONDecoder().decode(State.self, from: data) {
             policy = state.policy; apps = state.apps; events = state.events
             pending = state.pending; lastAttempt = state.lastAttempt
+            notificationsEnabled = state.notificationsEnabled ?? false
         }
         verifyHostAfterLaunch()
     }
@@ -82,6 +85,7 @@ public final class UnifiedRefreshCoordinator: ObservableObject {
     public func verifyHostAfterLaunch() {
         guard let bundle = UserDefaults.lcMainBundle() else { status = "Host bundle unavailable."; return }
         hostProfile = InstalledHostProfile.read(bundle: bundle)
+        scheduleExpirationReminders()
         guard let pending else { return }
         guard pending.processID != getpid() else {
             status = "Self-installation awaits verification after reopening the manager."
@@ -175,6 +179,7 @@ public final class UnifiedRefreshCoordinator: ObservableObject {
         do {
             let data = try await UnifiedSideStoreService.request(action: action, url: url, bundleID: bundleID)
             apps = try JSONDecoder().decode([ManagedDeviceApp].self, from: data)
+            scheduleExpirationReminders()
             record(action == "refresh" ? "SideStore returned signing records. Reopen to verify self-installation; device profile readback is still required." : "SideStore completed installation. Verify the app on the Home Screen.")
         } catch {
             record("Operation interrupted or failed. Check Apple ID / Signing for authentication, pairing, VPN, slots, and certificate errors. No verified success recorded.")
@@ -184,15 +189,26 @@ public final class UnifiedRefreshCoordinator: ObservableObject {
     }
 
     public func enableNotifications() async throws {
-        _ = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
-        guard let expiry = hostProfile?.expires else { return }
+        notificationsEnabled = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
+        persist()
+        scheduleExpirationReminders()
+        guard notificationsEnabled else { throw failure("Allow notifications in iOS Settings to receive expiration reminders.") }
+    }
+
+    private func scheduleExpirationReminders() {
+        guard notificationsEnabled else { return }
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: ["unified-expiry-48", "unified-expiry-24"])
+        // Use the installed host profile, not a newer host signing record that may never have installed.
+        let expirations = apps.filter { !$0.isHost }.map(\.expires) + [hostProfile?.expires].compactMap { $0 }
+        guard let expiry = expirations.min() else { return }
         for hours in [48, 24] {
             let interval = expiry.addingTimeInterval(-Double(hours) * 3600).timeIntervalSinceNow
             guard interval > 0 else { continue }
             let content = UNMutableNotificationContent()
             content.title = "Check sideloaded app refresh"
-            content.body = "The last observed manager profile approaches expiration. Open the manager with LocalDevVPN connected."
-            try await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "unified-expiry-\(hours)", content: content, trigger: UNTimeIntervalNotificationTrigger(timeInterval: interval, repeats: false)))
+            content.body = "A tracked app approaches its recorded expiration. Open the manager with LocalDevVPN connected and verify refresh."
+            center.add(UNNotificationRequest(identifier: "unified-expiry-\(hours)", content: content, trigger: UNTimeIntervalNotificationTrigger(timeInterval: interval, repeats: false)))
         }
     }
 
@@ -213,7 +229,7 @@ public final class UnifiedRefreshCoordinator: ObservableObject {
     }
     private func save() throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let data = try JSONEncoder().encode(State(policy: policy, apps: apps, events: events, pending: pending, lastAttempt: lastAttempt))
+        let data = try JSONEncoder().encode(State(policy: policy, apps: apps, events: events, pending: pending, lastAttempt: lastAttempt, notificationsEnabled: notificationsEnabled))
         try data.write(to: directory.appendingPathComponent("refresh.json"), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
     }
     private func acquireLock() throws -> Int32 {

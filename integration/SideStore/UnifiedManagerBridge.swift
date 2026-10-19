@@ -74,7 +74,11 @@ final class LCUnifiedManagerBridge: NSObject {
             } catch {
                 // Upstream errors can contain account identifiers and server payloads.
                 let nsError = error as NSError
-                reply(nil, "SideStore could not complete the operation (code \(nsError.code)). Open Apple ID / Signing to check authentication, 2FA, pairing, VPN, available slots, and the detailed error.")
+                if nsError.domain == "UnifiedManager" {
+                    reply(nil, nsError.localizedDescription)
+                } else {
+                    reply(nil, "SideStore could not complete the operation (code \(nsError.code)). Open Apple ID / Signing to check authentication, 2FA, pairing, VPN, available slots, and the detailed error.")
+                }
             }
         }
     }

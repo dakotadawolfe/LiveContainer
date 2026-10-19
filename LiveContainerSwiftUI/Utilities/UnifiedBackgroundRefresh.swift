@@ -3,9 +3,14 @@ import SideStoreSupport
 
 @MainActor
 enum UnifiedBackgroundRefresh {
-    static let identifier = "com.kdt.livecontainer.unified-refresh"
+    // SideStore rewrites permitted identifiers when provisioning changes the bundle ID.
+    static var identifier: String? {
+        (Bundle.main.object(forInfoDictionaryKey: "BGTaskSchedulerPermittedIdentifiers") as? [String])?
+            .first { $0.hasSuffix(".unified-refresh") }
+    }
 
     static func register() {
+        guard let identifier else { return }
         BGTaskScheduler.shared.register(forTaskWithIdentifier: identifier, using: .main) { task in
             let work = Task { @MainActor in
                 schedule()
@@ -18,6 +23,7 @@ enum UnifiedBackgroundRefresh {
     }
 
     static func schedule() {
+        guard let identifier else { return }
         guard UnifiedRefreshCoordinator.shared.policy != .manual else {
             BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: identifier)
             return

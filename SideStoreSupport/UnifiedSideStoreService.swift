@@ -3,12 +3,17 @@ import UserNotifications
 
 @MainActor
 public enum UnifiedSideStoreService {
+    private static var active = false
     public static func request(action: String, url: URL? = nil, bundleID: String? = nil) async throws -> Data {
+        guard !active else { throw serviceError("Another signing operation is running.") }
+        active = true
+        defer { active = false }
         var request = ["action": action]
         request["url"] = url?.absoluteString
         request["bundleID"] = bundleID
         let data = try JSONSerialization.data(withJSONObject: request)
-        let handler = RefreshHandler.shared
+        // A distinct callback receiver prevents late replies from completing a later request.
+        let handler = RefreshHandler()
         try await handler.startRefresh(identifier: "unified:" + data.base64EncodedString(), mangledName: "")
         guard let result = handler.snapshot else {
             throw serviceError("SideStore returned no signing records. The operation is unverified.")
@@ -23,7 +28,6 @@ private func serviceError(_ message: String) -> NSError {
 
 @MainActor
 final class RefreshHandler: NSObject, RefreshServer {
-    static let shared = RefreshHandler()
     var progress: Progress?
     var snapshot: Data?
     private var active = false
@@ -31,6 +35,7 @@ final class RefreshHandler: NSObject, RefreshServer {
     private var completion: CheckedContinuation<Void, Error>?
     private var launch: CheckedContinuation<Void, Error>?
     private var listener: NSXPCListener?
+    private var connection: NSXPCConnection?
     private var client: RefreshClient?
     private var ext: NSExtension?
     private var pid: Int32 = 0
@@ -42,7 +47,7 @@ final class RefreshHandler: NSObject, RefreshServer {
         let operationID = UUID()
         generation = operationID
         snapshot = nil
-        defer { active = false }
+        defer { active = false; shutdown() }
         try Task.checkCancellation()
         if listener == nil { listener = startAnonymousListener(self) }
         guard let listener else { throw serviceError("Could not create the SideStore service connection.") }
@@ -107,6 +112,20 @@ final class RefreshHandler: NSObject, RefreshServer {
         starting?.resume(throwing: serviceError(message))
     }
 
+    private func shutdown() {
+        connection?.interruptionHandler = nil
+        connection?.invalidationHandler = nil
+        connection?.invalidate()
+        connection = nil
+        listener?.invalidate()
+        listener = nil
+        client = nil
+        ext?._kill(9)
+        ext = nil
+        pid = 0
+        ready = false
+    }
+
     nonisolated func updateProgress(_ value: Double) {
         Task { @MainActor in self.progress?.completedUnitCount = Int64(max(0, min(1, value)) * 100) }
     }
@@ -131,10 +150,15 @@ final class RefreshHandler: NSObject, RefreshServer {
         connection.remoteObjectInterface = NSXPCInterface(with: RefreshClient.self)
         connection.interruptionHandler = { Task { @MainActor in self.fail("The SideStore connection was interrupted. Verify the installed app before retrying.") } }
         connection.invalidationHandler = { Task { @MainActor in self.fail("The SideStore connection closed. Verify the installed app before retrying.") } }
-        Task { @MainActor in self.client = connection.remoteObjectProxy as? RefreshClient }
+        Task { @MainActor in
+            guard self.active else { connection.invalidate(); return }
+            self.connection = connection
+            self.client = connection.remoteObjectProxy as? RefreshClient
+        }
     }
     nonisolated func finishedLaunching() {
         Task { @MainActor in
+            guard self.active else { return }
             self.ready = true
             let starting = self.launch
             self.launch = nil
