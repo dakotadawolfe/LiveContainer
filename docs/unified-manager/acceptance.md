@@ -1,6 +1,6 @@
 # Physical-device acceptance record
 
-Status: **bootstrap attempted; failed after Zeus removed extensions and the shared App Group was inaccessible**. The user deleted that installation. See results.md for the reported evidence. No complete acceptance item below is passed by CI. Record artifact SHA-256, commit, device model, exact iOS build, signing team (keep identifiers private), test time, observations, and failure evidence. Never put credentials, private keys, anisette payloads, UDIDs or pairing contents in public logs.
+Status: **Apple ID login reported successful; live pairing and DDI mount confirmed in Health Check on build 1476cd5**. The earlier incomplete Zeus installation was deleted. Device registration, installation and self-refresh remain unverified. See results.md for the reported evidence. No complete acceptance item below is passed by CI. Record artifact SHA-256, commit, device model, exact iOS build, signing team (keep identifiers private), test time, observations, and failure evidence. Never put credentials, private keys, anisette payloads, UDIDs or pairing contents in public logs.
 
 ## Bootstrap regression checks
 
@@ -14,9 +14,10 @@ Status: **bootstrap attempted; failed after Zeus removed extensions and the shar
 
 - [ ] Bootstrap the complete IPA, preserving all extensions and framework bundles.
 - [ ] Embedded SideStore opens with only one manager Home Screen icon; no separate SideStore/StikDebug installed.
-- [x] Apple ID login: user reports success on build 1476cd5; embedded Settings shows an account. Device registration still fails with BrokenPipe/UnexpectedEof.
+- [x] Apple ID login: user reports success on build 1476cd5; embedded Settings shows an account. Apple device registration is a separate pending check.
 - [ ] Record the successful 2FA path and verify certificate generation/import.
-- [ ] Pairing and LocalDevVPN establish the required signing transport.
+- [x] Live device connection: after repeated pairing, Health Check shows SideStore Ready, reachable device, verified pairing and mounted DDI (00:12 screenshot, build 1476cd5). Installation through this transport remains unverified.
+- [ ] Apple device registration completes after the pairing correction.
 - [ ] Correctly self-install the complete IPA through embedded SideStore as required by issue 1629.
 - [ ] Verify host Team ID, bundle ID, App Groups, keychain groups, extension identities and get-task-allow after signing.
 - [ ] Document whether Zeus bootstrap worked; otherwise document the exact successful iloader/Impactor settings.

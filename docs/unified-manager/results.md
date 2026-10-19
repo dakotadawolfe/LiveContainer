@@ -1,6 +1,6 @@
 # Build and validation record — 2026-10-19 UTC
 
-Status: **development preview built; Apple ID login reported working; device registration blocked by transport errors**. This is not yet an accepted self-maintaining replacement for Zeus.
+Status: **development preview built; Apple ID login reported working; live remote pairing and DDI mount confirmed by device Health Check**. Device registration and self-installation still require confirmation. This is not yet an accepted self-maintaining replacement for Zeus.
 
 ## Reported device evidence
 
@@ -19,6 +19,8 @@ Later screenshots confirm both active and preferred protocols are `rppairing` af
 Two user-supplied console logs were inspected privately, including a fresh process launch at 2026-10-19 00:08 device time with Minimuxer logging enabled. TCP probes succeed, the remote record parses, and `tunnel_create_rppairing_with_options` fails with connection reset or early EOF before the device ID can be read. No successful tunnel is recorded. The fresh launch has overlapping startup calls, but later separate attempts also fail; this does not establish concurrency as the cause. The release gateway enables only native error-level logging, so these logs do not identify the individual failed handshake step or prove an invalid pairing key. A USB-created remote record, independently validated with idevice_pair, is the next proposed comparison and has not been tested. No raw logs, account identifiers or pairing material are committed.
 
 ## Delivered build
+
+After repeating pairing, the user supplied a 00:12 device screenshot on build 1476cd5 showing SideStore Ready, Wi-Fi active, device reachable, pairing file verified, and DDI mounted, using Remote Server mode with endpoint 10.7.0.1. This establishes a successful live pairing check after the earlier failures. The user reported repeating the pairing flow; no USB comparison was reported. It does not establish the exact cause of the previous resets, Apple device registration, an installation, debugger attachment, or guest JIT execution. The next gates are confirmation of Apple device registration and full combined-IPA self-installation, followed by installed-profile renewal verification.
 
 - Artifact: `LiveContainer+SideStore.ipa`
 - Source commit: `1476cd539ddadf7011024063f1562f305ff45111`
