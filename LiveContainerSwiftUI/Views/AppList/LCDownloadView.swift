@@ -47,6 +47,7 @@ struct TransferQueueView: View {
                         if let message = item.message { Text(message).font(.caption).foregroundStyle(.secondary) }
                         if item.state == .failed {
                             Button("Retry") { queue.retry(item.id) }
+                            Button("Remove download", role: .destructive) { queue.cancel(item.id) }
                         } else if item.state.isActive && item.state != .installing {
                             Button("Cancel", role: .destructive) { queue.cancel(item.id) }
                         }

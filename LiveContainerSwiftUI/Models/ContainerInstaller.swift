@@ -163,15 +163,7 @@ final class ContainerInstaller: ObservableObject {
             finalNewApp.spoofSDKVersion = true
         }
         finalNewApp.installationDate = Date.now
-        let backup = outputFolder.deletingLastPathComponent().appendingPathComponent(".previous-" + UUID().uuidString)
-        let replacing = fm.fileExists(atPath: outputFolder.path)
-        if replacing { try fm.moveItem(at: outputFolder, to: backup) }
-        do { try fm.moveItem(at: appFolderPath, to: outputFolder) }
-        catch {
-            if replacing { try? fm.moveItem(at: backup, to: outputFolder) }
-            throw error
-        }
-        if replacing { try? fm.removeItem(at: backup) }
+        try ContainerBundleCommit.install(prepared: appFolderPath, destination: outputFolder)
         guard let installedInfo = LCAppInfo(bundlePath: outputFolder.path) else { throw "Installed bundle could not be read." }
         installedInfo.relativeBundlePath = appRelativePath
         

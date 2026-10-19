@@ -50,7 +50,7 @@ The tests reject unchanged/older profile expiry, changed app/team identity, miss
 
 ## Not passed or not implemented
 
-Apple ID login is reported successful and the account screen is visible. Certificate issuance, standalone installation, guest execution, JIT activation, self-installation, self-refresh, data-preservation checks, automation and the seven-day trial remain unverified. CI cannot establish those device results.
+After the pairing check, the user reported successfully reinstalling/refreshing the same combined IPA through embedded SideStore following the Impactor bootstrap, successfully installing a standalone app with Install to Device, and successfully installing and launching container apps after resolving the JIT-less certificate setup message. These are user-reported device results on the previous build. Installed profile UUID/expiration comparisons, complete data-preservation checks, a specifically identified JIT-required guest, automation and the seven-day trial have not been independently recorded. The new download queue still requires its own [device acceptance checks](downloads.md).
 
 Installed-device provisioning readback for every standalone app remains unimplemented; their displayed expirations come from SideStore's database. Interactive Apple authentication and detailed device management remain in the bundled SideStore screen. Some signing prompts may need that foreground UI instead of a headless helper. Guest credential isolation retains LiveContainer's documented security limitations. These are material limitations, not completed acceptance items.
 

@@ -2,6 +2,48 @@ import XCTest
 @testable import TransferRules
 
 final class TransferRulesTests: XCTestCase {
+    func testReplacementExchangesCompleteBundlesWithoutTouchingData() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? fm.removeItem(at: root) }
+        let staged = root.appendingPathComponent("staged.app")
+        let installed = root.appendingPathComponent("installed.app")
+        try fm.createDirectory(at: staged, withIntermediateDirectories: true)
+        try fm.createDirectory(at: installed, withIntermediateDirectories: true)
+        try Data("new".utf8).write(to: staged.appendingPathComponent("version"))
+        try Data("old".utf8).write(to: installed.appendingPathComponent("version"))
+        let userData = root.appendingPathComponent("guest-data")
+        try Data("saved game".utf8).write(to: userData)
+        try ContainerBundleCommit.install(prepared: staged, destination: installed)
+        XCTAssertEqual(try Data(contentsOf: installed.appendingPathComponent("version")), Data("new".utf8))
+        XCTAssertEqual(try Data(contentsOf: staged.appendingPathComponent("version")), Data("old".utf8))
+        XCTAssertEqual(try Data(contentsOf: userData), Data("saved game".utf8))
+    }
+
+    func testFailedReplacementRetainsInstalledBundle() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? fm.removeItem(at: root) }
+        let installed = root.appendingPathComponent("installed.app")
+        try fm.createDirectory(at: installed, withIntermediateDirectories: true)
+        try Data("old".utf8).write(to: installed.appendingPathComponent("version"))
+        XCTAssertThrowsError(try ContainerBundleCommit.install(prepared: root.appendingPathComponent("missing.app"), destination: installed))
+        XCTAssertEqual(try Data(contentsOf: installed.appendingPathComponent("version")), Data("old".utf8))
+    }
+
+    func testNewInstallationMovesPreparedBundle() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? fm.removeItem(at: root) }
+        let staged = root.appendingPathComponent("staged.app")
+        let installed = root.appendingPathComponent("installed.app")
+        try fm.createDirectory(at: staged, withIntermediateDirectories: true)
+        try Data("new".utf8).write(to: staged.appendingPathComponent("version"))
+        try ContainerBundleCommit.install(prepared: staged, destination: installed)
+        XCTAssertFalse(fm.fileExists(atPath: staged.path))
+        XCTAssertEqual(try Data(contentsOf: installed.appendingPathComponent("version")), Data("new".utf8))
+    }
+
     func item(_ state: TransferState) -> TransferItem {
         var item = TransferItem(id: UUID(), url: URL(string: "https://example.com/game.ipa")!,
                                 name: "Game", destination: .liveContainer,

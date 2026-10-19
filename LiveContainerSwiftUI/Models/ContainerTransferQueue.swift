@@ -107,7 +107,7 @@ final class ContainerTransferQueue: ObservableObject {
     }
 
     func cancel(_ id: UUID) {
-        guard let i = items.firstIndex(where: { $0.id == id }), items[i].state.isActive,
+        guard let i = items.firstIndex(where: { $0.id == id }), items[i].state.isActive || items[i].state == .failed,
               items[i].state != .installing else { return }
         items[i].state = .cancelled
         tasks.removeValue(forKey: id)?.cancel()

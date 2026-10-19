@@ -4,7 +4,7 @@ Choose Install in LiveContainer in Discover or import an IPA from Installed. The
 
 Tap the compact Downloads bar to inspect individual progress, cancel a queued/download operation, or retry a failure. Duplicate active requests for the same download URL and destination open the existing queue. Completed and cancelled entries can be cleared. A replacement choice appears inside the queue, with a notice in the bar; it never silently replaces another container. Once installation starts, cancellation is unavailable to avoid partially removing an application.
 
-The manager stages and patches/signs a guest before replacing its existing bundle. The replacement keeps the existing data-container identifiers and settings. A failed preparation leaves the installed version intact. The queue stores source provenance separately for every job.
+The manager stages and patches/signs a guest before atomically exchanging it with its existing bundle. The replacement keeps the existing data-container identifiers and settings. A failed preparation or exchange leaves the installed version intact. The queue stores source provenance separately for every job.
 
 ## iOS execution limits
 
@@ -14,7 +14,7 @@ Installations start while the manager is active and request limited extra execut
 
 ## Automated checks
 
-`swift test` covers journal round trips, independent job identities, interrupted-install recovery, background-transfer reattachment, staged-download recovery, missing IPA detection, terminal states, and unknown/misreported download lengths. Existing refresh and packaging tests remain required. CI archives the complete host and packages embedded SideStore, StikJIT and all helper extensions.
+`swift test` covers journal round trips, independent job identities, interrupted-install recovery, background-transfer reattachment, staged-download recovery, missing IPA detection, terminal states, and unknown/misreported download lengths. Filesystem tests exercise actual bundle exchange, failed replacement, and a new installation on macOS. Existing refresh and packaging tests remain required. CI archives the complete host and packages embedded SideStore, StikJIT and all helper extensions.
 
 ## Physical-device checks (not yet verified for this change)
 

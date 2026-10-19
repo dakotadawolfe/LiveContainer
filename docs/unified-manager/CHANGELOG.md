@@ -1,5 +1,8 @@
 # Changes from the StikJIT proof of concept
 
+- Queue up to three concurrent IPA downloads without a blocking progress screen or tab switch. Keep per-app progress, cancel/retry actions, source provenance and a persistent journal.
+- Use background URLSession transfers, reattach downloads after launch, and serialize installations. Interrupted installations require review rather than reporting success.
+- Support multiple IPA selections from Files. Stage and sign container updates before replacing the existing bundle; retain guest data and settings. Replacement choices wait inside Downloads.
 - Block Apple ID sign-in until SideStore's database has started, and avoid database maintenance/error saves after failed startup.
 - Check App Group access and all four bundled extensions before opening the signing screen or starting refresh; explain how to recover an incomplete bootstrap without resetting data.
 - Merge current LiveContainer fixes into the `stikjit-poc` base while retaining bundled SideStore and existing guest functionality.
