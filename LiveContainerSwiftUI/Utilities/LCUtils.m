@@ -383,7 +383,7 @@
     [manager removeItemAtURL:[appBundlePath URLByAppendingPathComponent:@"Frameworks/StikJITHeadless.framework"] error:nil];
     // remove all sidestore stuff
     if([NSUserDefaults sideStoreExist]) {
-        [manager removeItemAtURL:[appBundlePath URLByAppendingPathComponent:@"Frameworks/SideStoreSupport.framework"] error:nil];
+        // The unified UI links this framework, including in secondary containers.
         [manager removeItemAtURL:[appBundlePath URLByAppendingPathComponent:@"Frameworks/SideStore.framework"] error:nil];
         [manager removeItemAtURL:[appBundlePath URLByAppendingPathComponent:@"Frameworks/SideStoreApp.framework"] error:nil];
         [manager removeItemAtURL:[appBundlePath URLByAppendingPathComponent:@"Intents.intentdefinition"] error:nil];

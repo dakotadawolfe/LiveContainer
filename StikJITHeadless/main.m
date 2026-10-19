@@ -49,7 +49,7 @@ int StikJITHeadlessMain(void) {
     
     pid_t pid = [appInfo[@"pid"] unsignedIntValue];
     NSString *scriptJs = appInfo[@"script"];
-    NSString *error = [StikJITWrapper enableJITWith:pid timeout:0.2 pairingFile:pairingFile ddiPath:ddiPath scriptJs:scriptJs];
+    NSString *error = [StikJITWrapper enableJITWith:pid timeout:5 pairingFile:pairingFile ddiPath:ddiPath scriptJs:scriptJs];
     if (error.length < 1) return 0;
     if ([error containsString:@"Timed out connecting to"]) {
         error = [error stringByAppendingString:@"\n\nIs LocalDevVPN connected?"];

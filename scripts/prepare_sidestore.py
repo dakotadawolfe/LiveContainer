@@ -36,3 +36,19 @@ replace('SideStore/Core/Operations/PipelineRunner.swift',
                 context.targetAppBundle = ALTApplication(fileURL: Bundle.Info.activeBundleURL)
             }''')
 print('Embedded SideStore integration applied')
+
+replace('SideStore/Core/Operations/StandaloneOperations/BackgroundRefreshAppsOperation.swift',
+        '            group.beginInstallationHandler = { [weak self] (installedApp) in',
+        '''            group.beginInstallationHandler = { [weak self] (installedApp) in
+                if Bundle.Info.activeBundle.object(forInfoDictionaryKey: "LCUnifiedManager") as? Bool == true {
+                    return // Installation starting is not a successful refresh.
+                }''')
+replace('SideStore/Core/Operations/StandaloneOperations/BackgroundRefreshAppsOperation.swift',
+        'content.title = NSLocalizedString("Refreshed Apps", comment: "")',
+        'content.title = NSLocalizedString("Refresh operation returned", comment: "")')
+replace('SideStore/Core/Operations/StandaloneOperations/BackgroundRefreshAppsOperation.swift',
+        'content.body = NSLocalizedString("All apps have been refreshed.", comment: "")',
+        'content.body = NSLocalizedString("Open the manager to verify installed provisioning and any pending self-refresh.", comment: "")')
+replace('AltStore/Intents/App Intents/RefreshAllAppsIntent.swift',
+        'return .result(dialog: "All apps have been refreshed.")',
+        'return .result(dialog: "Refresh returned. Open the manager to verify installed provisioning.")')

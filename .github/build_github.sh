@@ -77,4 +77,5 @@ ldid -S.github/sidelc/LiveWidgetExtension_adhoc.xml ./Payload/LiveContainer.app/
 
 # package
 /usr/libexec/PlistBuddy -c 'Add :LCUnifiedManager bool true' ./Payload/LiveContainer.app/Info.plist
+python3 scripts/adhoc_sign.py
 zip -r "$scheme+SideStore.ipa" "Payload" -x "._*" -x ".DS_Store" -x "__MACOSX"

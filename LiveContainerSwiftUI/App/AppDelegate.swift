@@ -7,6 +7,9 @@ import Intents
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? ) -> Bool {
         application.shortcutItems = nil
         UnifiedBackgroundRefresh.register()
+        if LCUtils.appGroupUserDefault.object(forKey: "LCJITEnablerType") == nil {
+            LCUtils.appGroupUserDefault.set(JITEnablerType.StikJITHeadless.rawValue, forKey: "LCJITEnablerType")
+        }
         UserDefaults.standard.removeObject(forKey: "LCNeedToAcquireJIT")
         
         NotificationCenter.default.addObserver(forName: UIApplication.willTerminateNotification, object: nil, queue: .main) { _ in

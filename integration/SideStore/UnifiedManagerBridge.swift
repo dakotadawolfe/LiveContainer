@@ -2,6 +2,7 @@ import Foundation
 import CoreData
 import SideSign
 import UIKit
+import Darwin
 
 /// Runs inside embedded SideStore. Signing state remains owned by its database.
 @objc(LCUnifiedManagerBridge)
@@ -18,6 +19,12 @@ final class LCUnifiedManagerBridge: NSObject {
             busy = true
             defer { busy = false }
             do {
+                let lockURL = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0].appendingPathComponent("UnifiedManager.engine.lock")
+                let fd = open(lockURL.path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)
+                guard fd >= 0 else { throw failure("Cannot open the signing-engine lock.") }
+                defer { close(fd) }
+                guard flock(fd, LOCK_EX | LOCK_NB) == 0 else { throw failure("A signing operation is still running in another helper.") }
+                defer { flock(fd, LOCK_UN) }
                 try await DatabaseManager.shared.start()
                 let request = try JSONDecoder().decode(Request.self, from: data)
                 switch request.action {

@@ -34,10 +34,13 @@ final class RefreshHandler: NSObject, RefreshServer {
     private var client: RefreshClient?
     private var ext: NSExtension?
     private var pid: Int32 = 0
+    private var generation = UUID()
 
     func startRefresh(identifier: String, mangledName: String) async throws {
         guard !active else { throw serviceError("Another signing operation is running.") }
         active = true
+        let operationID = UUID()
+        generation = operationID
         snapshot = nil
         defer { active = false }
         try Task.checkCancellation()
@@ -68,7 +71,7 @@ final class RefreshHandler: NSObject, RefreshServer {
                 }
                 Task { @MainActor in
                     try? await Task.sleep(nanoseconds: 60_000_000_000)
-                    if self.launch != nil { self.fail("Embedded SideStore did not start within one minute.") }
+                    if self.generation == operationID, self.launch != nil { self.fail("Embedded SideStore did not start within one minute.") }
                 }
             }
         }
@@ -78,6 +81,12 @@ final class RefreshHandler: NSObject, RefreshServer {
                 completion = continuation
                 // Register the continuation before sending the request; replies may be immediate.
                 client.refreshAllApps(withIdentifier: identifier, mangledTypeName: mangledName)
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 300_000_000_000)
+                    if self.generation == operationID, self.completion != nil {
+                        self.fail("SideStore did not return within five minutes. Verify installation state before retrying.")
+                    }
+                }
             }
         } onCancel: {
             Task { @MainActor in self.fail("The operation was interrupted. Its installation result must be verified before retrying.") }

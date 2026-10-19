@@ -13,6 +13,15 @@ extern BOOL checkJITEnabled(void);
 @implementation NSExtension(StikJITHeadlessPayload)
 + (NSString *)spawnStikJITWithHostURLScheme:(NSString *)lcAppUrlScheme docPath:(NSString *)docPath
                                      script:(NSString *)script {
+    if (@available(iOS 17.4, *)) {} else {
+        return @"Built-in StikJIT requires iOS 17.4 or newer.";
+    }
+    void *task = SecTaskCreateFromSelf(NULL);
+    CFTypeRef entitlement = task ? SecTaskCopyValueForEntitlement(task, CFSTR("get-task-allow"), NULL) : NULL;
+    BOOL permitted = entitlement && CFEqual(entitlement, kCFBooleanTrue);
+    if (entitlement) CFRelease(entitlement);
+    if (task) CFRelease(task);
+    if (!permitted) return @"This host is missing get-task-allow. Reinstall with developer signing and keep LiveProcess.";
     Class LCSharedUtils = PrivClass(LCSharedUtils);
     __block NSError *error;
     NSExtension *ext = [NSExtension extensionWithIdentifier:[LCSharedUtils liveProcessBundleIdentifier] error:&error];
@@ -63,8 +72,13 @@ extern BOOL checkJITEnabled(void);
         CFRunLoopStop(CFRunLoopGetMain());
     }];
     CFRunLoopRun();
-    while (!error && !checkJITEnabled()) {
+    NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:120];
+    while (!error && !checkJITEnabled() && deadline.timeIntervalSinceNow > 0) {
         usleep(1000*100);
+    }
+    if (!error && !checkJITEnabled()) {
+        [ext _kill:9];
+        return @"StikJIT timed out. Check pairing, LocalDevVPN, and guest script compatibility.";
     }
     return error ? [@"Built-in StikJIT failed: " stringByAppendingString:error.localizedDescription] : nil;
 }
