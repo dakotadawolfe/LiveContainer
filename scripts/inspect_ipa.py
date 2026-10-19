@@ -44,6 +44,7 @@ def inspect(path):
                 if not extension['CFBundleIdentifier'].startswith(info['CFBundleIdentifier'] + '.'):
                     raise ValueError('Extension identifier does not belong to host')
         return {'sha256': hashlib.sha256(Path(path).read_bytes()).hexdigest(), 'bundleID': info['CFBundleIdentifier'],
+                'sourceCommit': info.get('LCUnifiedBuildCommit'),
                 'requiredComponents': REQUIRED, 'entries': len(names), 'deviceSigningVerified': False,
                 'selfRefreshVerified': False}
 

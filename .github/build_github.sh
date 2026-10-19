@@ -1,4 +1,5 @@
 set -euo pipefail
+: "${SIDESTORE_IPA:?Build the pinned SideStore overlay first, then set SIDESTORE_IPA to its IPA path.}"
 # copy lc
 wget https://github.com/LiveContainer/dylibify/releases/download/1.0/dylibify
 chmod +x dylibify
@@ -7,7 +8,7 @@ brew install ldid
 # move lc to working folder
 mv "$archive_path.xcarchive/Products/Applications" Payload
 
-# temporarily move sidestore support framrwork to tmp before zip
+# staging directory for the embedded signing engine
 mkdir tmp
 
 zip -r "$scheme.ipa" "Payload" -x "._*" -x ".DS_Store" -x "__MACOSX"
@@ -40,12 +41,7 @@ zip -r "$scheme.ipa" "Payload" -x "._*" -x ".DS_Store" -x "__MACOSX"
 
 # download SideStore
 cd tmp
-if [ -n "${SIDESTORE_IPA:-}" ]; then
-    cp "$SIDESTORE_IPA" SideStore.ipa
-else
-    curl --fail --location https://api.github.com/repos/LiveContainer/SideStore/releases/assets/649969380 -H 'Accept: application/octet-stream' -o SideStore.ipa
-    echo 'f9d2d9af51285dcbdece08c51aadc02e8a2d756da6ca8dfca16724c801ae2fcd  SideStore.ipa' | shasum -a 256 -c -
-fi
+cp "$SIDESTORE_IPA" SideStore.ipa
 unzip SideStore.ipa
 cd ..
 
@@ -77,5 +73,7 @@ ldid -S.github/sidelc/LiveWidgetExtension_adhoc.xml ./Payload/LiveContainer.app/
 
 # package
 /usr/libexec/PlistBuddy -c 'Add :LCUnifiedManager bool true' ./Payload/LiveContainer.app/Info.plist
+build_commit="${GITHUB_SHA:-$(git rev-parse HEAD)}"
+/usr/libexec/PlistBuddy -c "Add :LCUnifiedBuildCommit string $build_commit" ./Payload/LiveContainer.app/Info.plist
 python3 scripts/adhoc_sign.py
 zip -r "$scheme+SideStore.ipa" "Payload" -x "._*" -x ".DS_Store" -x "__MACOSX"

@@ -2,7 +2,8 @@ name: Unified bundled build
 on:
   workflow_dispatch:
   push:
-    branches: [unified-manager]
+    branches: [main, unified-manager]
+    paths-ignore: ['docs/**', '*.md']
 permissions:
   contents: read
 jobs:
@@ -56,6 +57,7 @@ jobs:
           set -euo pipefail
           SIDESTORE_IPA="$PWD/.build/SideStore/SideStore.ipa" bash .github/build_github.sh 2>&1 | tee build-logs/package.log
           python3 scripts/inspect_ipa.py LiveContainer+SideStore.ipa | tee build-logs/ipa-inspection.json
+          python3 scripts/inspect_entitlements.py LiveContainer+SideStore.ipa | tee build-logs/entitlement-inspection.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
