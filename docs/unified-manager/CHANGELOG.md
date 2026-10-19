@@ -1,5 +1,7 @@
 # Changes from the StikJIT proof of concept
 
+- Block Apple ID sign-in until SideStore's database has started, and avoid database maintenance/error saves after failed startup.
+- Check App Group access and all four bundled extensions before opening the signing screen or starting refresh; explain how to recover an incomplete bootstrap without resetting data.
 - Merge current LiveContainer fixes into the `stikjit-poc` base while retaining bundled SideStore and existing guest functionality.
 - Add a reproducible macOS combined-IPA workflow with pinned SideStore and StikJIT source revisions, logs, Swift tests and archive inspection.
 - Add an embedded signing-service bridge using upstream SideStore APIs and its existing database.

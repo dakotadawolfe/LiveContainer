@@ -10,7 +10,7 @@ Record the old bundle ID, signing Team ID, profile expiration, guest list and ap
 
 1. Download this fork's complete `LiveContainer+SideStore.ipa` and compare its SHA-256 with the build inspection report.
 2. Zeus is an **unverified** bootstrap route. It must retain LiveProcess, the widget, bundled frameworks, developer entitlements, App Groups and keychain groups. An enterprise/distribution signature without `get-task-allow` cannot provide the required JIT behavior.
-3. Prefer upstream's documented iloader or Impactor bootstrap route if Zeus cannot preserve these. Keep extensions; upstream recommends remote pairing (17.4+) with Impactor. Do not assume the first bootstrap signing pass configured the complete bundled app correctly.
+3. Prefer upstream's documented iloader or Impactor bootstrap route if Zeus cannot preserve these. With [Impactor, select Only Register Main Bundle](https://livecontainer.github.io/docs/installation/lc_sidestore). This keeps the extension bundles; it is not the same as removing them. Upstream recommends remote pairing (17.4+) with Impactor. Do not assume the first bootstrap signing pass configured the complete bundled app correctly. A new main App ID still requires available registration capacity; this option does not reset Apple's quota.
 4. Enable Developer Mode and trust the developer installation when prompted by iOS.
 5. Open **Settings → Apple ID / Signing** in the combined app. Complete SideStore's existing Apple Account/2FA flow on the phone. Do not give credentials or pairing files to the build system or an arbitrary source server.
 6. Follow embedded SideStore's pairing setup for this device and connect LocalDevVPN. Use Wi-Fi for the first controlled test. The StikJIT pairing picker recognizes Lockdown records; remote pairing and Lockdown pairing are not interchangeable by renaming the file.
@@ -20,6 +20,16 @@ Record the old bundle ID, signing Team ID, profile expiration, guest list and ap
 10. Only after the real self-installation and device-app refresh checks pass should Zeus be removed from routine use. Retain a recovery copy of the complete IPA outside the app.
 
 If authentication fails, open the embedded signing screen and complete reauthentication/2FA there. Issue 1629 lists specific upstream recovery steps for newer login and database failures; back up before considering destructive resets. This fork does not automatically wipe accounts, pairing, caches or data to hide an error.
+
+### App Group error or "no persistent stores" during sign-in
+
+The reported Zeus installation reached the host UI, but embedded SideStore could not access its App Group container. The later Core Data save exception is consistent with continuing authentication after database startup failed; it is not evidence of a wrong Apple password. The precise signing entitlements of that installed copy have not been inspected.
+
+Do not retry authentication, choose **Remove and Install**, delete the working installation, or use **Nuke SideStore** for this error. Export guest data first. Reinstall this fork's full combined IPA using the supported Impactor settings above, retaining the same account and application identity where possible. Verify preservation rather than assuming an in-place installation will retain every App Group or keychain item. If the installer needs a new main App ID and Apple reports no capacity, wait for the existing registrations to expire. Removing apps does not make the weekly App ID warning equivalent to the three-active-app limit.
+
+After reinstalling, embedded SideStore must open its shared database before Apple login can work. Then perform the full-IPA self-installation in step 7. The startup guards only reject an incomplete installation: they cannot grant missing entitlements, reset registration limits, or prove self-refresh. No private database fallback is created because helpers and widgets must use the same store.
+
+The reported LocalDevVPN endpoint success establishes TCP connectivity only. It does not validate App Groups, pairing, extension retention, Apple authentication, or JIT execution.
 
 ## Sources, installation, and updates
 

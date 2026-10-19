@@ -4,7 +4,19 @@ import UserNotifications
 @MainActor
 public enum UnifiedSideStoreService {
     private static var active = false
+    public static func validateInstallation() throws {
+        let bundle = UserDefaults.lcMainBundle() ?? Bundle.main
+        let group: String? = LCSharedUtils.appGroupID()
+        let accessible = group.flatMap {
+            FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: $0)
+        } != nil
+        if let problem = BootstrapRequirements.problem(bundleURL: bundle.bundleURL, sharedGroupAccessible: accessible) {
+            throw serviceError(problem)
+        }
+    }
+
     public static func request(action: String, url: URL? = nil, bundleID: String? = nil) async throws -> Data {
+        try validateInstallation()
         guard !active else { throw serviceError("Another signing operation is running.") }
         active = true
         defer { active = false }
@@ -42,6 +54,7 @@ final class RefreshHandler: NSObject, RefreshServer {
     private var generation = UUID()
 
     func startRefresh(identifier: String, mangledName: String) async throws {
+        try UnifiedSideStoreService.validateInstallation()
         guard !active else { throw serviceError("Another signing operation is running.") }
         active = true
         let operationID = UUID()

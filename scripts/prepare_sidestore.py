@@ -37,6 +37,45 @@ replace('SideStore/Core/Operations/PipelineRunner.swift',
             }''')
 print('Embedded SideStore integration applied')
 
+# Authentication must not start while database startup is still pending or has failed.
+# Keep this outside the authentication catch, which can sign out and write account state.
+replace('SideStore/Core/Operations/StandaloneOperations/SignInOperation.swift',
+        '        try await super.executePreconditionCheck(parentProgress: parentProgress)\n\n        do {',
+        '''        try await super.executePreconditionCheck(parentProgress: parentProgress)
+        try await DatabaseManager.shared.start()
+
+        do {''')
+replace('SideStore/Core/Auth/AuthManager.swift',
+        '''    ) async throws -> SignInResult {
+        let dbBackgroundContext''',
+        '''    ) async throws -> SignInResult {
+        try await DatabaseManager.shared.start()
+        let dbBackgroundContext''')
+
+# Backgrounding the startup-error screen also used to save into an unloaded store.
+replace('AltStore/Core/Model/DatabaseManager/DatabaseManager.swift',
+        '''    public func purgeLoggedErrors(before date: Date? = nil) async throws
+    {
+        try await self.persistentContainer.performBackgroundTask''',
+        '''    public func purgeLoggedErrors(before date: Date? = nil) async throws
+    {
+        guard self.isStarted else { return }
+        try await self.persistentContainer.performBackgroundTask''')
+replace('AltStore/Managing Apps/AppManager.swift',
+        '''    func log(_ error: Error, operation: LoggedError.Operation, app: AppProtocol)
+    {
+        switch error''',
+        '''    func log(_ error: Error, operation: LoggedError.Operation, app: AppProtocol)
+    {
+        guard DatabaseManager.shared.isStarted else {
+            debugLog("[AppManager] Database unavailable; skipped persistent error logging.")
+            return
+        }
+        switch error''')
+replace('AltStore/Core/Model/DatabaseManager/PersistentContainer.swift',
+        'Unable to access the shared App Group container. Refusing to create or use a private sandbox fallback database.',
+        'iOS did not provide access to the shared App Group database. Apple ID sign-in cannot continue. Back up guest data, then reinstall the complete combined IPA with a supported installer that preserves App Groups and all extensions. Do not select Remove App Extensions or reset the database. Impactor: select Only Register Main Bundle. A private database cannot replace the shared store used by refresh and widgets.')
+
 replace('SideStore/Core/Operations/StandaloneOperations/BackgroundRefreshAppsOperation.swift',
         '            group.beginInstallationHandler = { [weak self] (installedApp) in',
         '''            group.beginInstallationHandler = { [weak self] (installedApp) in

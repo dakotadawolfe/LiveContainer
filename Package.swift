@@ -2,6 +2,6 @@
 import PackageDescription
 
 let package = Package(name: "UnifiedManagerRules", products: [], targets: [
-    .target(name: "RefreshRules", path: "SideStoreSupport", sources: ["RefreshRules.swift"]),
+    .target(name: "RefreshRules", path: "SideStoreSupport", sources: ["RefreshRules.swift", "BootstrapRequirements.swift"]),
     .testTarget(name: "RefreshRulesTests", dependencies: ["RefreshRules"], path: "Tests/RefreshRulesTests")
 ])

@@ -6,6 +6,7 @@
 //
 
 import LocalAuthentication
+import SideStoreSupport
 
 extension LCUtils {
     public static let appGroupUserDefault = UserDefaults.init(suiteName: LCSharedUtils.appGroupID()) ?? UserDefaults.standard
@@ -500,8 +501,18 @@ extension LCUtils {
     static func openSideStore(delegate: LCAppModelDelegate? = nil, urlStr: String? = nil) {
         let sideStoreApp = LCAppModel(appInfo: BuiltInSideStoreAppInfo.shared, delegate: delegate)
         
-        Task {
-            try await sideStoreApp.runApp(bundleIdOverride: "builtinSideStore", urlStr: urlStr)
+        Task { @MainActor in
+            do {
+                try UnifiedSideStoreService.validateInstallation()
+                try await sideStoreApp.runApp(bundleIdOverride: "builtinSideStore", urlStr: urlStr)
+            } catch {
+                let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+                let window = scenes.filter { $0.activationState == .foregroundActive }
+                    .flatMap(\.windows).first { $0.isKeyWindow }
+                var presenter = window?.rootViewController
+                while let presented = presenter?.presentedViewController { presenter = presented }
+                presenter?.showError(error.localizedDescription)
+            }
         }
     }
 }
