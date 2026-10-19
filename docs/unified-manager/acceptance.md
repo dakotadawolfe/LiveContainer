@@ -14,7 +14,8 @@ Status: **bootstrap attempted; failed after Zeus removed extensions and the shar
 
 - [ ] Bootstrap the complete IPA, preserving all extensions and framework bundles.
 - [ ] Embedded SideStore opens with only one manager Home Screen icon; no separate SideStore/StikDebug installed.
-- [ ] Apple ID login and 2FA work; certificate generation/import works.
+- [x] Apple ID login: user reports success on build 1476cd5; embedded Settings shows an account. Device registration still fails with BrokenPipe/UnexpectedEof.
+- [ ] Record the successful 2FA path and verify certificate generation/import.
 - [ ] Pairing and LocalDevVPN establish the required signing transport.
 - [ ] Correctly self-install the complete IPA through embedded SideStore as required by issue 1629.
 - [ ] Verify host Team ID, bundle ID, App Groups, keychain groups, extension identities and get-task-allow after signing.

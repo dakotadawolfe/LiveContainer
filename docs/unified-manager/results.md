@@ -1,6 +1,6 @@
 # Build and validation record — 2026-10-19 UTC
 
-Status: **development preview built; user device test exposed a bootstrap/database failure**. This is not yet an accepted self-maintaining replacement for Zeus.
+Status: **development preview built; Apple ID login reported working; device registration blocked by transport errors**. This is not yet an accepted self-maintaining replacement for Zeus.
 
 ## Reported device evidence
 
@@ -11,6 +11,8 @@ Zeus separately offered to remove extensions because four new App IDs were reque
 The bootstrap correction adds host checks for all four extensions and the shared group, waits for database startup before sign-in, and suppresses persistent error logging/purging until startup succeeds. These checks do not reset or delete account or guest data. On-device validation of these corrections remains required.
 
 A subsequent user screenshot of build 1476cd5 on iOS 27.0.1 reaches the SideStore Apple ID form and reports "This action cannot be completed at this time. (-80045)". The earlier database error is not shown in this attempt; this is not a successful login or a full database regression test. The pinned integration branch is still upstream's latest LiveContainerSupport commit, and its SideSign dependency already includes merged 2FA fix PR 5. Other upstream users report the same authentication error. A reversible client-header configuration test is documented in setup.md; its outcome on this phone is pending. No account identifier or screenshot containing it is published here.
+
+The user subsequently confirmed successful login on build 1476cd5, supported by the embedded Settings account screen. Device registration still fails with `Lockdown session failed` and either `BrokenPipe` (32) or `UnexpectedEof`. Account authentication is now a reported device success; certificate provisioning, device registration and installation are not. The active/preferred pairing protocol and LocalDevVPN connection state have not yet been verified. The error alone does not prove the selected protocol; inspect Pairing File Management before replacing any record. Existing login configuration should be retained.
 
 ## Delivered build
 
@@ -42,7 +44,7 @@ The tests reject unchanged/older profile expiry, changed app/team identity, miss
 
 ## Not passed or not implemented
 
-No successful Apple ID login, certificate issuance, standalone installation, guest execution, JIT activation, self-installation, self-refresh, data-preservation check, automation run, or seven-day trial has been verified. CI cannot establish those results.
+Apple ID login is reported successful and the account screen is visible. Certificate issuance, standalone installation, guest execution, JIT activation, self-installation, self-refresh, data-preservation checks, automation and the seven-day trial remain unverified. CI cannot establish those device results.
 
 Installed-device provisioning readback for every standalone app remains unimplemented; their displayed expirations come from SideStore's database. Interactive Apple authentication and detailed device management remain in the bundled SideStore screen. Some signing prompts may need that foreground UI instead of a headless helper. Guest credential isolation retains LiveContainer's documented security limitations. These are material limitations, not completed acceptance items.
 
