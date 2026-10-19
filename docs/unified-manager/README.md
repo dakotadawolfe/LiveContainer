@@ -41,7 +41,7 @@ Free-account standalone slots and App ID restrictions are enforced by SideStore.
 
 ## Current limitations requiring validation or more work
 
-- No physical iPhone is attached to this development environment. Apple authentication, 2FA, certificate creation/import, standalone installation, self-installation, widget execution, and all JIT execution remain unverified.
+- This build has not been tested on a physical iPhone. Apple authentication, 2FA, certificate creation/import, standalone installation, self-installation, widget execution, and all JIT execution remain unverified.
 - UI prompts required by SideStore may not be presentable from a headless LiveProcess. Use **Apple ID / Signing** to complete setup or permission review. End-to-end interactive installation from the unified service must be tested; a compile does not establish this works.
 - The device list is a SideStore snapshot. Live installed-device provisioning readback for every device app is not implemented; do not call those entries verified renewals.
 - Foreground opportunities and Shortcuts use the same coordinator. BackgroundTasks requests are best effort. A background timeout can interrupt signing; reopen, verify the installed state, and retry. Never use a missing callback as success.
